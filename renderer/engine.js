@@ -5,6 +5,10 @@ const PARAMS = {
   Input: [
     { id: 'inGain', label: 'Input gain', min: -20, max: 30, step: 0.5, def: 0, unit: 'dB' },
   ],
+  'Noise suppression': [
+    { id: 'nsOn', label: 'On', type: 'toggle', def: false },
+    { id: 'nsAmt', label: 'Amount', min: 0, max: 100, step: 5, def: 100, unit: '%' },
+  ],
   'High-pass': [
     { id: 'hpfOn', label: 'On', type: 'toggle', def: true },
     { id: 'hpfFreq', label: 'Frequency', min: 20, max: 300, step: 1, def: 80, unit: 'Hz' },
@@ -53,6 +57,7 @@ class Engine {
     this.ctx = null;
     this.values = defaults();
     this.onGate = () => {};
+    this.onNoiseStatus = () => {};
     this.muted = false;
     this.boardDb = 0;
     this.sounds = new Map(); // decoded clips for the current context, by name
@@ -76,6 +81,15 @@ class Engine {
     if (outputId && ctx.setSinkId) await ctx.setSinkId(outputId === 'default' ? '' : outputId);
     await ctx.audioWorklet.addModule('gate-processor.js');
     await ctx.audioWorklet.addModule('deesser-processor.js');
+    // Noise suppression is optional: if the WASM can't load, carry on without it.
+    this.rnReady = false;
+    let rnLoaded = false;
+    try {
+      await ctx.audioWorklet.addModule('rnnoise-processor.js');
+      rnLoaded = true;
+    } catch (err) {
+      this.onNoiseStatus('Noise suppression is unavailable: ' + err.message);
+    }
 
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -93,6 +107,13 @@ class Engine {
     n.hpf = ctx.createBiquadFilter();
     n.hpf.type = 'highpass';
     n.hpf.Q.value = 0.707;
+    if (rnLoaded) {
+      n.rn = new AudioWorkletNode(ctx, 'rnnoise-processor', { channelCountMode: 'explicit', channelCount: 1 });
+      n.rn.port.onmessage = (e) => {
+        if (e.data.ready) this.rnReady = true;
+        if (e.data.error) this.onNoiseStatus('Noise suppression failed to start: ' + e.data.error);
+      };
+    }
     n.gate = new AudioWorkletNode(ctx, 'gate-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.gate.port.onmessage = (e) => this.onGate(e.data.gain);
     n.low = this._biquad('lowshelf', 120);
@@ -116,7 +137,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.makeup, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.makeup, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.out.connect(n.outMeter);
@@ -163,6 +184,11 @@ class Engine {
 
     ramp(n.inGain.gain, dbToLin(v.inGain));
     n.hpf.frequency.setTargetAtTime(v.hpfOn ? v.hpfFreq : 10, t, 0.015);
+
+    if (n.rn) {
+      n.rn.parameters.get('enabled').value = v.nsOn ? 1 : 0;
+      n.rn.parameters.get('amount').value = v.nsAmt / 100;
+    }
 
     const g = n.gate.parameters;
     g.get('enabled').value = v.gateOn ? 1 : 0;
@@ -257,7 +283,8 @@ class Engine {
 
   get latencyMs() {
     if (!this.ctx) return 0;
-    return Math.round((this.ctx.baseLatency + (this.ctx.outputLatency || 0)) * 1000);
+    const noiseFrame = this.values.nsOn && this.rnReady ? 0.01 : 0; // RNNoise buffers one 10 ms frame
+    return Math.round((this.ctx.baseLatency + (this.ctx.outputLatency || 0) + noiseFrame) * 1000);
   }
 
   async stop() {

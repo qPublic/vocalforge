@@ -33,7 +33,7 @@ Builds are unsigned, so Windows SmartScreen will warn on first run ("More info" 
 
 - [x] Phase 1: passthrough, meters, device selection
 - [x] Phase 2: gate, EQ, compressor, limiter, presets
-- [ ] RNNoise AI noise suppression
+- [x] RNNoise AI noise suppression (off by default; adds 10 ms while on)
 - [ ] Multi-input mixer (mic, desktop audio, music) and routing
 - [x] De-esser
 - [x] Auto-tune wizard (listens to your room and voice, suggests gate/EQ/de-esser/compressor)

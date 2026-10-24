@@ -98,7 +98,7 @@ function suggest(a) {
 
   notes.push(`Noise floor ${a.noiseFloorDb.toFixed(0)} dB, voice ${a.speechMedianDb.toFixed(0)} dB: gate set to ${gateThr} dB.`);
   notes.push(`Input gain ${inGain >= 0 ? '+' : ''}${inGain} dB to bring your voice to a healthy level.`);
-  if (a.snrDb < 18) notes.push('Your room is fairly noisy. A closer mic or the "Noisy room" preset will help.');
+  if (a.snrDb < 18) notes.push('Your room is fairly noisy. Try the "Noisy room" preset or turn on Noise suppression.');
   if (a.rel.mud - TARGET_REL.mud > 3) notes.push(`Your voice is a little boomy: cutting the 300 Hz mud by ${Math.abs(eqMud)} dB.`);
   if (a.rel.pres - TARGET_REL.pres < -3) notes.push(`Your voice is a little dull: adding ${eqPres} dB of presence.`);
   if (sibExcess > 3) notes.push('Your "s" sounds are sharp: de-esser is set more firmly.');

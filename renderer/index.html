@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:">
   <title>VocalForge</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="wizard.css">
@@ -53,6 +53,8 @@
     <div id="padGrid"></div>
   </section>
   <p class="hint">Tip: set Output to <b>CABLE Input</b> (VB-Cable), then pick <b>CABLE Output</b> as your microphone in Discord/OBS. Use headphones when monitoring to avoid feedback.</p>
+
+  <div id="toast" role="status" hidden></div>
 
   <footer>
     <span>VocalForge <b id="ver">v–</b></span>

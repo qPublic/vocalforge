@@ -6,7 +6,7 @@ const BUILTIN_PRESETS = {
   'Clean voice (default)': {},
   'Warm podcast': { eqLow: 4, eqMud: -3, eqPres: 2, eqAir: 0, compRatio: 4, compThr: -26, makeup: 7 },
   'Bright streamer': { eqLow: 0, eqMud: -3, eqPres: 5, eqAir: 4, compRatio: 3, makeup: 6, gateThr: -48 },
-  'Noisy room': { hpfFreq: 120, deessThr: -34, gateThr: -40, gateRel: 0.12, eqMud: -4, compRatio: 5, compThr: -28 },
+  'Noisy room': { nsOn: true, nsAmt: 100, hpfFreq: 120, deessThr: -34, gateThr: -40, gateRel: 0.12, eqMud: -4, compRatio: 5, compThr: -28 },
   Flat: { hpfOn: false, gateOn: false, eqOn: false, deessOn: false, compOn: false, limOn: true, makeup: 0 },
 };
 
@@ -21,6 +21,17 @@ const persist = () => {
 };
 
 const allPresets = () => ({ ...BUILTIN_PRESETS, ...store.user });
+
+// ---------- toast ----------
+function toast(message, isError = false) {
+  const t = $('toast');
+  t.textContent = message;
+  t.classList.toggle('error', isError);
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.hidden = true), 6000);
+}
+engine.onNoiseStatus = (msg) => toast(msg, true);
 
 // ---------- panels ----------
 const sliders = {};
