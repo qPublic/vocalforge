@@ -12,14 +12,57 @@ const Soundboard = (() => {
     if (text) say.t = setTimeout(() => (status.textContent = ''), 4000);
   }
 
-  async function play(name) {
-    if (!running) return say('Start the mixer first, then play sounds.', true);
+  // Local preview through a plain audio element, so a pad can be auditioned with the mixer off or the
+  // output pointed at a virtual cable. Goes to the monitor device when one is chosen.
+  const previews = new Set();
+  let hintedCable = false;
+
+  async function preview(name) {
+    const bytes = await window.vf.readSound(name);
+    const url = URL.createObjectURL(new Blob([bytes]));
+    const audio = new Audio(url);
+    const monitor = store.devices && store.devices.mon;
+    if (monitor && monitor !== 'default' && audio.setSinkId) {
+      try {
+        await audio.setSinkId(monitor);
+      } catch {}
+    }
+    previews.add(audio);
+    audio.addEventListener('ended', () => {
+      previews.delete(audio);
+      URL.revokeObjectURL(url);
+    });
+    await audio.play();
+  }
+
+  function flash(button) {
+    if (!button) return;
+    button.classList.add('hit');
+    setTimeout(() => button.classList.remove('hit'), 180);
+  }
+
+  async function play(name, button) {
+    flash(button);
     try {
+      if (!running) {
+        toast('The mixer is off, so this is a preview on your speakers. Press Start to send sounds to your output.');
+        return await preview(name);
+      }
       const bytes = engine.hasSound(name) ? null : await window.vf.readSound(name);
       await engine.playSound(name, bytes);
+      if (!hintedCable && !(store.devices && store.devices.monitor)) {
+        hintedCable = true;
+        toast('Sounds play into your output (what other apps hear). Turn on Monitor to hear them yourself, or use the headphone button on a pad to preview.');
+      }
     } catch (err) {
-      say(`Could not play ${prettyName(name)}: ${err.message}`, true);
+      toast(`Could not play ${prettyName(name)}: ${err.message}`, true);
     }
+  }
+
+  function stopAll() {
+    engine.stopSounds();
+    for (const a of previews) a.pause();
+    previews.clear();
   }
 
   async function render() {
@@ -34,7 +77,12 @@ const Soundboard = (() => {
       btn.className = 'padPlay';
       btn.textContent = prettyName(name);
       btn.title = 'Play ' + name;
-      btn.addEventListener('click', () => play(name));
+      btn.addEventListener('click', () => play(name, btn));
+      const prev = document.createElement('button');
+      prev.className = 'padPrev icon';
+      prev.textContent = '🎧';
+      prev.title = 'Preview privately (only you hear it)';
+      prev.addEventListener('click', () => preview(name).catch((err) => toast('Preview failed: ' + err.message, true)));
       const row = document.createElement('div');
       row.className = 'padRow';
       const del = document.createElement('button');
@@ -50,7 +98,7 @@ const Soundboard = (() => {
         await Hotkeys.sync();
         render();
       });
-      row.append(Hotkeys.chip('sound:' + name), del);
+      row.append(Hotkeys.chip('sound:' + name), prev, del);
       pad.append(btn, row);
       grid.append(pad);
     }
@@ -78,13 +126,13 @@ const Soundboard = (() => {
       render();
     });
     $('boardBrowse').addEventListener('click', () => Catalog.open());
-    $('boardStop').addEventListener('click', () => engine.stopSounds());
+    $('boardStop').addEventListener('click', stopAll);
 
-    Hotkeys.onPrefix('sound:', play);
-    Hotkeys.onAction('stopSounds', () => engine.stopSounds());
+    Hotkeys.onPrefix('sound:', (name) => play(name));
+    Hotkeys.onAction('stopSounds', stopAll);
     $('stopChip').append(Hotkeys.chip('stopSounds'));
     render();
   }
 
-  return { init, play, render };
+  return { init, play, preview, stopAll, render };
 })();

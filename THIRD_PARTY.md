@@ -9,4 +9,4 @@
 
 # Bundled sounds
 
-- `catalog/sounds/*.wav` are original clips synthesized by `scripts/make-sample-sounds.py`, released under CC0-1.0.
+- `catalog/sounds/**/*.wav` are original clips synthesized by `scripts/make-sample-sounds.py`, released under CC0-1.0.

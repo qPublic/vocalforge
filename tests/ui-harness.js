@@ -67,6 +67,13 @@ async function loadApp({ vf = {}, store } = {}) {
     beforeParse(window) {
       window.vf = bridge;
       window.alert = (m) => errors.push('alert: ' + m);
+      // jsdom has no media playback or blob URLs.
+      window.HTMLMediaElement.prototype.play = async function () {
+        window.__played = (window.__played || 0) + 1;
+      };
+      window.HTMLMediaElement.prototype.pause = function () {};
+      window.URL.createObjectURL = () => 'blob:test';
+      window.URL.revokeObjectURL = () => {};
       window.HTMLDialogElement.prototype.showModal ||= function () { this.open = true; };
       window.HTMLDialogElement.prototype.close ||= function () { this.open = false; };
       Object.defineProperty(window.navigator, 'mediaDevices', {

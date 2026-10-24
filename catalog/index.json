@@ -7,12 +7,227 @@
       "license": "CC0-1.0",
       "description": "Original synthesized sound effects, free for any use.",
       "clips": [
-        { "name": "ding.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/ding.wav" },
-        { "name": "buzzer.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/buzzer.wav" },
-        { "name": "coin.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/coin.wav" },
-        { "name": "level-up.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/level-up.wav" },
-        { "name": "sad-descent.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sad-descent.wav" },
-        { "name": "whoosh.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/whoosh.wav" }
+        {
+          "name": "ding.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/ding.wav"
+        },
+        {
+          "name": "buzzer.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/buzzer.wav"
+        },
+        {
+          "name": "coin.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/coin.wav"
+        },
+        {
+          "name": "sad-descent.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sad-descent.wav"
+        },
+        {
+          "name": "whoosh.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/whoosh.wav"
+        },
+        {
+          "name": "level-up.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/level-up.wav"
+        }
+      ]
+    },
+    {
+      "id": "retro-games",
+      "name": "Retro game sounds",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Chiptune jumps, power-ups, lasers and explosions.",
+      "clips": [
+        {
+          "name": "retro-jump.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-jump.wav"
+        },
+        {
+          "name": "retro-powerup.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-powerup.wav"
+        },
+        {
+          "name": "retro-laser.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-laser.wav"
+        },
+        {
+          "name": "retro-explosion.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-explosion.wav"
+        },
+        {
+          "name": "retro-hit.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-hit.wav"
+        },
+        {
+          "name": "retro-blip.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-blip.wav"
+        },
+        {
+          "name": "retro-gameover.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/retro-games/retro-gameover.wav"
+        }
+      ]
+    },
+    {
+      "id": "stream-alerts",
+      "name": "Stream alerts",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Chimes and notification sounds for follows, subs and donations.",
+      "clips": [
+        {
+          "name": "alert-chime.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-chime.wav"
+        },
+        {
+          "name": "alert-notify.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-notify.wav"
+        },
+        {
+          "name": "alert-success.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-success.wav"
+        },
+        {
+          "name": "alert-error.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-error.wav"
+        },
+        {
+          "name": "alert-subscribe.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-subscribe.wav"
+        },
+        {
+          "name": "alert-donation.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-donation.wav"
+        },
+        {
+          "name": "alert-airy-bell.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/stream-alerts/alert-airy-bell.wav"
+        }
+      ]
+    },
+    {
+      "id": "cartoon-comedy",
+      "name": "Cartoon and comedy",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Boings, slide whistles, bonks, a rimshot and a record scratch.",
+      "clips": [
+        {
+          "name": "toon-boing.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-boing.wav"
+        },
+        {
+          "name": "toon-slide-up.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-slide-up.wav"
+        },
+        {
+          "name": "toon-slide-down.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-slide-down.wav"
+        },
+        {
+          "name": "toon-bonk.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-bonk.wav"
+        },
+        {
+          "name": "toon-squeak.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-squeak.wav"
+        },
+        {
+          "name": "toon-pop.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-pop.wav"
+        },
+        {
+          "name": "toon-wah-wah.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-wah-wah.wav"
+        },
+        {
+          "name": "toon-rimshot.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-rimshot.wav"
+        },
+        {
+          "name": "toon-record-scratch.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/cartoon-comedy/toon-record-scratch.wav"
+        }
+      ]
+    },
+    {
+      "id": "drum-kit",
+      "name": "Drum kit",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Kick, snare, hi-hat, clap, tom, cymbal and cowbell.",
+      "clips": [
+        {
+          "name": "drum-kick.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-kick.wav"
+        },
+        {
+          "name": "drum-snare.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-snare.wav"
+        },
+        {
+          "name": "drum-hihat.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-hihat.wav"
+        },
+        {
+          "name": "drum-clap.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-clap.wav"
+        },
+        {
+          "name": "drum-tom.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-tom.wav"
+        },
+        {
+          "name": "drum-cymbal.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-cymbal.wav"
+        },
+        {
+          "name": "drum-cowbell.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drum-kit/drum-cowbell.wav"
+        }
+      ]
+    },
+    {
+      "id": "drama-impact",
+      "name": "Drama and impact",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Air horn, big booms, risers, stingers and a crowd.",
+      "clips": [
+        {
+          "name": "drama-airhorn.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-airhorn.wav"
+        },
+        {
+          "name": "drama-boom.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-boom.wav"
+        },
+        {
+          "name": "drama-dun-dun-dun.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-dun-dun-dun.wav"
+        },
+        {
+          "name": "drama-riser.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-riser.wav"
+        },
+        {
+          "name": "drama-stinger.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-stinger.wav"
+        },
+        {
+          "name": "drama-heartbeat.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-heartbeat.wav"
+        },
+        {
+          "name": "drama-crickets.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-crickets.wav"
+        },
+        {
+          "name": "drama-applause.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-applause.wav"
+        }
       ]
     }
   ]

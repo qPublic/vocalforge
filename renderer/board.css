@@ -48,3 +48,6 @@
 .cat-pack button { grid-row: 1 / span 2; grid-column: 2; }
 .cat-msg { color: var(--dim); }
 .cat-msg.error { color: var(--hot); }
+
+.padPlay.hit { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(76, 194, 255, .45) inset; }
+.padPrev { padding: 2px 7px; font-size: 12px; }

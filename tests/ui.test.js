@@ -114,3 +114,39 @@ test('the soundboard lists installed sounds as pads', async () => {
   assert.deepEqual(pads, ['airhorn', 'ding']);
   window.close();
 });
+
+const TWO_SOUNDS = [{ name: 'airhorn.mp3', size: 10 }, { name: 'ding.wav', size: 10 }];
+
+test('clicking a pad with the mixer off previews the sound and explains why', async () => {
+  const { window, errors, calls, settle } = await loadApp({ store: SKIP_WIZARD, vf: { listSounds: async () => TWO_SOUNDS } });
+  window.document.querySelector('.padPlay').click();
+  await settle();
+  assert.ok(calls.some((c) => c[0] === 'readSound' && c[1] === 'airhorn.mp3'), 'should load the clip');
+  assert.equal(window.__played, 1, 'should start playback');
+  const toast = window.document.getElementById('toast');
+  assert.equal(toast.hidden, false);
+  assert.match(toast.textContent, /mixer is off/i);
+  assert.deepEqual(errors, []);
+  window.close();
+});
+
+test('the headphone button previews a sound privately', async () => {
+  const { window, errors, calls, settle } = await loadApp({ store: SKIP_WIZARD, vf: { listSounds: async () => TWO_SOUNDS } });
+  window.document.querySelectorAll('.padPrev')[1].click();
+  await settle();
+  assert.ok(calls.some((c) => c[0] === 'readSound' && c[1] === 'ding.wav'));
+  assert.equal(window.__played, 1);
+  assert.deepEqual(errors, []);
+  window.close();
+});
+
+test('a failing preview shows an error message instead of failing silently', async () => {
+  const { window, settle } = await loadApp({
+    store: SKIP_WIZARD,
+    vf: { listSounds: async () => TWO_SOUNDS, readSound: async () => { throw new Error('file is gone'); } },
+  });
+  window.document.querySelector('.padPlay').click();
+  await settle();
+  assert.match(window.document.getElementById('toast').textContent, /file is gone/);
+  window.close();
+});
