@@ -8,7 +8,7 @@
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
     "test": "node --test tests/*.test.js",
-    "build:engine": "cmd /c engine\build.bat"
+    "build:engine": "node scripts/build-engine.js"
   },
   "license": "MIT",
   "devDependencies": {
