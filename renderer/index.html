@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:">
+  <title>VocalForge</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>VocalForge</h1>
+    <div class="devices">
+      <label>Mic <select id="inSel"></select></label>
+      <label>Output <select id="outSel"></select></label>
+      <label class="chk"><input type="checkbox" id="monChk"> Monitor</label>
+      <label>Monitor to <select id="monSel"></select></label>
+      <button id="startBtn">Start</button>
+    </div>
+  </header>
+
+  <section class="meters">
+    <div class="meter"><span>IN</span><div class="bar"><i id="inBar"></i></div><b id="inDb">-∞</b></div>
+    <div class="meter"><span>OUT</span><div class="bar"><i id="outBar"></i></div><b id="outDb">-∞</b></div>
+    <div class="meter"><span>COMP</span><div class="bar rev"><i id="grBar"></i></div><b id="grDb">0</b></div>
+    <div class="meter"><span>GATE</span><div class="bar"><i id="gateBar"></i></div><b id="gateState">open</b></div>
+    <div class="stat">Latency <b id="lat">–</b></div>
+  </section>
+
+  <section class="presets">
+    <label>Preset <select id="presetSel"></select></label>
+    <input type="text" id="presetName" placeholder="New preset name">
+    <button id="saveBtn">Save</button>
+    <button id="delBtn">Delete</button>
+    <button id="resetBtn">Reset</button>
+  </section>
+
+  <main id="panels"></main>
+  <p class="hint">Tip: set Output to <b>CABLE Input</b> (VB-Cable), then pick <b>CABLE Output</b> as your microphone in Discord/OBS. Use headphones when monitoring to avoid feedback.</p>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

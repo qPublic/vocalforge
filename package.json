@@ -1,0 +1,13 @@
+{
+  "name": "vocalforge",
+  "version": "0.1.0",
+  "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^45.0.0"
+  }
+}

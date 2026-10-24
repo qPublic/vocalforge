@@ -1,0 +1,202 @@
+// Audio engine: mic -> HPF -> gate -> EQ -> compressor -> makeup -> limiter -> out
+// Params are declared once in PARAMS; the UI and presets are generated from it.
+
+const PARAMS = {
+  Input: [
+    { id: 'inGain', label: 'Input gain', min: -20, max: 30, step: 0.5, def: 0, unit: 'dB' },
+  ],
+  'High-pass': [
+    { id: 'hpfOn', label: 'On', type: 'toggle', def: true },
+    { id: 'hpfFreq', label: 'Frequency', min: 20, max: 300, step: 1, def: 80, unit: 'Hz' },
+  ],
+  'Noise gate': [
+    { id: 'gateOn', label: 'On', type: 'toggle', def: true },
+    { id: 'gateThr', label: 'Threshold', min: -90, max: -10, step: 1, def: -52, unit: 'dB' },
+    { id: 'gateRel', label: 'Release', min: 0.02, max: 1, step: 0.01, def: 0.18, unit: 's' },
+  ],
+  EQ: [
+    { id: 'eqOn', label: 'On', type: 'toggle', def: true },
+    { id: 'eqLow', label: 'Low shelf 120 Hz', min: -12, max: 12, step: 0.5, def: 2, unit: 'dB' },
+    { id: 'eqMud', label: 'Mud cut 300 Hz', min: -12, max: 6, step: 0.5, def: -2.5, unit: 'dB' },
+    { id: 'eqPres', label: 'Presence 3.5 kHz', min: -6, max: 12, step: 0.5, def: 3, unit: 'dB' },
+    { id: 'eqAir', label: 'Air shelf 10 kHz', min: -6, max: 12, step: 0.5, def: 2, unit: 'dB' },
+  ],
+  Compressor: [
+    { id: 'compOn', label: 'On', type: 'toggle', def: true },
+    { id: 'compThr', label: 'Threshold', min: -60, max: 0, step: 1, def: -24, unit: 'dB' },
+    { id: 'compRatio', label: 'Ratio', min: 1, max: 20, step: 0.5, def: 3.5, unit: ':1' },
+    { id: 'compAtk', label: 'Attack', min: 0.001, max: 0.1, step: 0.001, def: 0.008, unit: 's' },
+    { id: 'compRel', label: 'Release', min: 0.05, max: 1, step: 0.01, def: 0.2, unit: 's' },
+    { id: 'makeup', label: 'Makeup gain', min: 0, max: 24, step: 0.5, def: 6, unit: 'dB' },
+  ],
+  Limiter: [
+    { id: 'limOn', label: 'On', type: 'toggle', def: true },
+    { id: 'limCeil', label: 'Ceiling', min: -12, max: 0, step: 0.5, def: -1.5, unit: 'dB' },
+  ],
+  Output: [
+    { id: 'outGain', label: 'Output gain', min: -30, max: 12, step: 0.5, def: 0, unit: 'dB' },
+  ],
+};
+
+const FLAT = Object.values(PARAMS).flat();
+const defaults = () => Object.fromEntries(FLAT.map((p) => [p.id, p.def]));
+const dbToLin = (db) => Math.pow(10, db / 20);
+
+class Engine {
+  constructor() {
+    this.ctx = null;
+    this.values = defaults();
+    this.onGate = () => {};
+  }
+
+  static async listDevices() {
+    // Labels are empty until permission is granted once.
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+    tmp.getTracks().forEach((t) => t.stop());
+    const all = await navigator.mediaDevices.enumerateDevices();
+    return {
+      inputs: all.filter((d) => d.kind === 'audioinput'),
+      outputs: all.filter((d) => d.kind === 'audiooutput'),
+    };
+  }
+
+  async start({ inputId, outputId, monitorId, monitor }) {
+    await this.stop();
+    const ctx = (this.ctx = new AudioContext({ latencyHint: 0, sampleRate: 48000 }));
+    if (outputId && ctx.setSinkId) await ctx.setSinkId(outputId === 'default' ? '' : outputId);
+    await ctx.audioWorklet.addModule('gate-processor.js');
+
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+      },
+    });
+
+    const n = (this.nodes = {});
+    n.src = ctx.createMediaStreamSource(this.stream);
+    n.inGain = ctx.createGain();
+    n.hpf = ctx.createBiquadFilter();
+    n.hpf.type = 'highpass';
+    n.hpf.Q.value = 0.707;
+    n.gate = new AudioWorkletNode(ctx, 'gate-processor', { channelCountMode: 'explicit', channelCount: 1 });
+    n.gate.port.onmessage = (e) => this.onGate(e.data.gain);
+    n.low = this._biquad('lowshelf', 120);
+    n.mud = this._biquad('peaking', 300, 1.0);
+    n.pres = this._biquad('peaking', 3500, 0.9);
+    n.air = this._biquad('highshelf', 10000);
+    n.comp = ctx.createDynamicsCompressor();
+    n.comp.knee.value = 6;
+    n.makeup = ctx.createGain();
+    n.lim = ctx.createDynamicsCompressor();
+    n.lim.knee.value = 0;
+    n.lim.ratio.value = 20;
+    n.lim.attack.value = 0.001;
+    n.lim.release.value = 0.08;
+    n.out = ctx.createGain();
+    n.inMeter = ctx.createAnalyser();
+    n.outMeter = ctx.createAnalyser();
+    n.inMeter.fftSize = n.outMeter.fftSize = 1024;
+
+    const chain = [n.src, n.inGain, n.hpf, n.gate, n.low, n.mud, n.pres, n.air, n.comp, n.makeup, n.lim, n.out];
+    chain.reduce((a, b) => (a.connect(b), b));
+    n.inGain.connect(n.inMeter);
+    n.out.connect(n.outMeter);
+    n.out.connect(ctx.destination);
+
+    if (monitor) this._startMonitor(monitorId);
+    this.apply();
+    return ctx;
+  }
+
+  _biquad(type, freq, q = 0.707) {
+    const f = this.ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    return f;
+  }
+
+  _startMonitor(deviceId) {
+    this.monDest = this.ctx.createMediaStreamDestination();
+    this.nodes.out.connect(this.monDest);
+    this.monEl = new Audio();
+    this.monEl.srcObject = this.monDest.stream;
+    if (deviceId && this.monEl.setSinkId) this.monEl.setSinkId(deviceId === 'default' ? '' : deviceId);
+    this.monEl.play();
+  }
+
+  set(id, value) {
+    this.values[id] = value;
+    this.apply();
+  }
+
+  load(values) {
+    this.values = { ...defaults(), ...values };
+    this.apply();
+  }
+
+  apply() {
+    const n = this.nodes;
+    if (!n) return;
+    const v = this.values;
+    const t = this.ctx.currentTime;
+    const ramp = (p, x) => p.setTargetAtTime(x, t, 0.015);
+
+    ramp(n.inGain.gain, dbToLin(v.inGain));
+    n.hpf.frequency.setTargetAtTime(v.hpfOn ? v.hpfFreq : 10, t, 0.015);
+
+    const g = n.gate.parameters;
+    g.get('enabled').value = v.gateOn ? 1 : 0;
+    g.get('threshold').value = v.gateThr;
+    g.get('release').value = v.gateRel;
+
+    const eq = v.eqOn;
+    ramp(n.low.gain, eq ? v.eqLow : 0);
+    ramp(n.mud.gain, eq ? v.eqMud : 0);
+    ramp(n.pres.gain, eq ? v.eqPres : 0);
+    ramp(n.air.gain, eq ? v.eqAir : 0);
+
+    const c = n.comp;
+    c.threshold.value = v.compOn ? v.compThr : 0;
+    c.ratio.value = v.compOn ? v.compRatio : 1;
+    c.attack.value = v.compAtk;
+    c.release.value = v.compRel;
+    ramp(n.makeup.gain, dbToLin(v.compOn ? v.makeup : 0));
+
+    n.lim.threshold.value = v.limOn ? v.limCeil : 0;
+    n.lim.ratio.value = v.limOn ? 20 : 1;
+    ramp(n.out.gain, dbToLin(v.outGain));
+  }
+
+  // Peak level in dBFS for 'in' or 'out'.
+  level(which) {
+    const a = which === 'in' ? this.nodes?.inMeter : this.nodes?.outMeter;
+    if (!a) return -100;
+    this._buf = this._buf?.length === a.fftSize ? this._buf : new Float32Array(a.fftSize);
+    a.getFloatTimeDomainData(this._buf);
+    let peak = 0;
+    for (const s of this._buf) peak = Math.max(peak, Math.abs(s));
+    return peak > 0 ? 20 * Math.log10(peak) : -100;
+  }
+
+  get reduction() {
+    return this.nodes?.comp.reduction ?? 0;
+  }
+
+  get latencyMs() {
+    if (!this.ctx) return 0;
+    return Math.round((this.ctx.baseLatency + (this.ctx.outputLatency || 0)) * 1000);
+  }
+
+  async stop() {
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.monEl?.pause();
+    this.monEl = null;
+    if (this.ctx) await this.ctx.close();
+    this.ctx = this.nodes = this.stream = null;
+  }
+}
