@@ -130,6 +130,8 @@ $('resetBtn').addEventListener('click', () => {
   applyPreset('Clean voice (default)');
 });
 
+$('autoBtn').addEventListener('click', () => AutoTune.open());
+
 // ---------- devices / transport ----------
 function fillSelect(sel, devices, saved) {
   sel.innerHTML = '';

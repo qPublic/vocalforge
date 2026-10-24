@@ -73,3 +73,9 @@ dialog#settings menu { margin: 6px 0 0; padding: 0; display: flex; justify-conte
 @keyframes wzSlide { from { opacity: 0; transform: translateX(18px); } }
 @keyframes wzBar { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.62); } }
 @media (prefers-reduced-motion: reduce) { .wz-logo .bar, .wz-body.enter, .wz-card, .wz-backdrop { animation: none; } }
+
+/* ---------- auto-tune ---------- */
+.at-card { min-height: 380px; }
+.at-sample { background: #14171c; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 15px; line-height: 1.6; margin: 0 0 6px; }
+.at-notes { margin: 8px 0 16px; padding-left: 20px; line-height: 1.7; }
+.at-actions { justify-self: end; display: flex; gap: 8px; }
