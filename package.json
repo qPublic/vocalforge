@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node scripts/start.js",
     "dist": "electron-builder --win --publish never",
-    "release": "electron-builder --win --publish always"
+    "release": "electron-builder --win --publish always",
+    "test": "node --test tests/*.test.js"
   },
   "license": "MIT",
   "devDependencies": {

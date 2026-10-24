@@ -19,6 +19,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       # Create the release up front: electron-builder uploads files in parallel and can
       # otherwise race to create duplicate releases. Tags with a hyphen are pre-releases.
       - name: Create release

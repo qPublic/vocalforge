@@ -6,8 +6,8 @@ const BUILTIN_PRESETS = {
   'Clean voice (default)': {},
   'Warm podcast': { eqLow: 4, eqMud: -3, eqPres: 2, eqAir: 0, compRatio: 4, compThr: -26, makeup: 7 },
   'Bright streamer': { eqLow: 0, eqMud: -3, eqPres: 5, eqAir: 4, compRatio: 3, makeup: 6, gateThr: -48 },
-  'Noisy room': { hpfFreq: 120, gateThr: -40, gateRel: 0.12, eqMud: -4, compRatio: 5, compThr: -28 },
-  Flat: { hpfOn: false, gateOn: false, eqOn: false, compOn: false, limOn: true, makeup: 0 },
+  'Noisy room': { hpfFreq: 120, deessThr: -34, gateThr: -40, gateRel: 0.12, eqMud: -4, compRatio: 5, compThr: -28 },
+  Flat: { hpfOn: false, gateOn: false, eqOn: false, deessOn: false, compOn: false, limOn: true, makeup: 0 },
 };
 
 let store = { user: {}, devices: {}, last: 'Clean voice (default)' };

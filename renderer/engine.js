@@ -21,6 +21,12 @@ const PARAMS = {
     { id: 'eqPres', label: 'Presence 3.5 kHz', min: -6, max: 12, step: 0.5, def: 3, unit: 'dB' },
     { id: 'eqAir', label: 'Air shelf 10 kHz', min: -6, max: 12, step: 0.5, def: 2, unit: 'dB' },
   ],
+  'De-esser': [
+    { id: 'deessOn', label: 'On', type: 'toggle', def: true },
+    { id: 'deessFreq', label: 'Crossover', min: 3000, max: 10000, step: 100, def: 5500, unit: 'Hz' },
+    { id: 'deessThr', label: 'Threshold', min: -60, max: -10, step: 1, def: -32, unit: 'dB' },
+    { id: 'deessAmt', label: 'Max reduction', min: 0, max: 18, step: 0.5, def: 8, unit: 'dB' },
+  ],
   Compressor: [
     { id: 'compOn', label: 'On', type: 'toggle', def: true },
     { id: 'compThr', label: 'Threshold', min: -60, max: 0, step: 1, def: -24, unit: 'dB' },
@@ -65,6 +71,7 @@ class Engine {
     const ctx = (this.ctx = new AudioContext({ latencyHint: 0, sampleRate: 48000 }));
     if (outputId && ctx.setSinkId) await ctx.setSinkId(outputId === 'default' ? '' : outputId);
     await ctx.audioWorklet.addModule('gate-processor.js');
+    await ctx.audioWorklet.addModule('deesser-processor.js');
 
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -88,6 +95,7 @@ class Engine {
     n.mud = this._biquad('peaking', 300, 1.0);
     n.pres = this._biquad('peaking', 3500, 0.9);
     n.air = this._biquad('highshelf', 10000);
+    n.deess = new AudioWorkletNode(ctx, 'deesser-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.comp = ctx.createDynamicsCompressor();
     n.comp.knee.value = 6;
     n.makeup = ctx.createGain();
@@ -101,7 +109,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, n.gate, n.low, n.mud, n.pres, n.air, n.comp, n.makeup, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.makeup, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.out.connect(n.outMeter);
@@ -159,6 +167,12 @@ class Engine {
     ramp(n.mud.gain, eq ? v.eqMud : 0);
     ramp(n.pres.gain, eq ? v.eqPres : 0);
     ramp(n.air.gain, eq ? v.eqAir : 0);
+
+    const d = n.deess.parameters;
+    d.get('enabled').value = v.deessOn ? 1 : 0;
+    d.get('freq').value = v.deessFreq;
+    d.get('threshold').value = v.deessThr;
+    d.get('amount').value = v.deessAmt;
 
     const c = n.comp;
     c.threshold.value = v.compOn ? v.compThr : 0;
