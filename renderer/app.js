@@ -337,7 +337,7 @@ function setupSettings() {
 }
 
 // ---------- init ----------
-(async function init() {
+async function init() {
   const safely = (name, fn) => {
     try {
       return fn();
@@ -370,4 +370,9 @@ function setupSettings() {
   tick();
   if (!store.setupDone) safely('Setup wizard', () => Wizard.open());
   else if (store.autoStartMixer && !running) toggle();
-})();
+}
+
+// Start only once every script on the page has run: init uses Hotkeys, Soundboard, Desktop and
+// Wizard, which are defined by scripts that load after this one.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
