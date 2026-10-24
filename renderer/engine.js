@@ -1,4 +1,4 @@
-// Audio engine: mic -> HPF -> gate -> EQ -> compressor -> makeup -> limiter -> out
+// Audio engine: mic -> HPF -> noise suppression -> gate -> EQ -> de-esser -> compressor -> limiter -> out
 // Params are declared once in PARAMS; the UI and presets are generated from it.
 
 const PARAMS = {
@@ -33,11 +33,11 @@ const PARAMS = {
   ],
   Compressor: [
     { id: 'compOn', label: 'On', type: 'toggle', def: true },
-    { id: 'compThr', label: 'Threshold', min: -60, max: 0, step: 1, def: -24, unit: 'dB' },
-    { id: 'compRatio', label: 'Ratio', min: 1, max: 20, step: 0.5, def: 3.5, unit: ':1' },
+    { id: 'compThr', label: 'Threshold', min: -60, max: 0, step: 1, def: -22, unit: 'dB' },
+    { id: 'compRatio', label: 'Ratio', min: 1, max: 20, step: 0.5, def: 3, unit: ':1' },
     { id: 'compAtk', label: 'Attack', min: 0.001, max: 0.1, step: 0.001, def: 0.008, unit: 's' },
     { id: 'compRel', label: 'Release', min: 0.05, max: 1, step: 0.01, def: 0.2, unit: 's' },
-    { id: 'makeup', label: 'Makeup gain', min: 0, max: 24, step: 0.5, def: 6, unit: 'dB' },
+    { id: 'makeup', label: 'Makeup gain', min: 0, max: 24, step: 0.5, def: 8, unit: 'dB' },
   ],
   Limiter: [
     { id: 'limOn', label: 'On', type: 'toggle', def: true },
@@ -60,6 +60,7 @@ class Engine {
     this.onError = () => {};
     this.onDesktopFailed = () => {};
     this.muted = false;
+    this.reductionDb = 0;
     this.desktopOn = false;
     this.desktopDb = -6;
     this.boardDb = 0;
@@ -88,10 +89,12 @@ class Engine {
 
   async start({ inputId, outputId, monitorId, monitor }) {
     await this.stop();
-    const ctx = (this.ctx = new AudioContext({ latencyHint: 0, sampleRate: 48000 }));
+    const ctx = (this.ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 }));
     if (outputId && ctx.setSinkId) await ctx.setSinkId(outputId === 'default' ? '' : outputId);
     await ctx.audioWorklet.addModule('gate-processor.js');
     await ctx.audioWorklet.addModule('deesser-processor.js');
+    await ctx.audioWorklet.addModule('compressor-processor.js');
+    await ctx.audioWorklet.addModule('limiter-processor.js');
     // Noise suppression is optional: if the WASM can't load, carry on without it.
     this.rnReady = false;
     let rnLoaded = false;
@@ -132,14 +135,11 @@ class Engine {
     n.pres = this._biquad('peaking', 3500, 0.9);
     n.air = this._biquad('highshelf', 10000);
     n.deess = new AudioWorkletNode(ctx, 'deesser-processor', { channelCountMode: 'explicit', channelCount: 1 });
-    n.comp = ctx.createDynamicsCompressor();
-    n.comp.knee.value = 6;
-    n.makeup = ctx.createGain();
-    n.lim = ctx.createDynamicsCompressor();
-    n.lim.knee.value = 0;
-    n.lim.ratio.value = 20;
-    n.lim.attack.value = 0.001;
-    n.lim.release.value = 0.08;
+    // Our own compressor and limiter: the browser's built-in ones add hidden makeup gain that
+    // stacked with ours and pushed the signal into the limiter.
+    n.comp = new AudioWorkletNode(ctx, 'compressor-processor', { channelCountMode: 'explicit', channelCount: 1 });
+    n.comp.port.onmessage = (e) => (this.reductionDb = e.data.reduction);
+    n.lim = new AudioWorkletNode(ctx, 'limiter-processor', { channelCountMode: 'explicit', channelCount: 1 });
     // Soundboard clips join just before the limiter, so they skip the voice processing.
     n.board = ctx.createGain();
     n.board.connect(n.lim);
@@ -150,7 +150,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.makeup, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.out.connect(n.outMeter);
@@ -221,15 +221,17 @@ class Engine {
     d.get('threshold').value = v.deessThr;
     d.get('amount').value = v.deessAmt;
 
-    const c = n.comp;
-    c.threshold.value = v.compOn ? v.compThr : 0;
-    c.ratio.value = v.compOn ? v.compRatio : 1;
-    c.attack.value = v.compAtk;
-    c.release.value = v.compRel;
-    ramp(n.makeup.gain, dbToLin(v.compOn ? v.makeup : 0));
+    const c = n.comp.parameters;
+    c.get('enabled').value = v.compOn ? 1 : 0;
+    c.get('threshold').value = v.compThr;
+    c.get('ratio').value = v.compRatio;
+    c.get('attack').value = v.compAtk;
+    c.get('release').value = v.compRel;
+    c.get('makeup').value = v.makeup;
 
-    n.lim.threshold.value = v.limOn ? v.limCeil : 0;
-    n.lim.ratio.value = v.limOn ? 20 : 1;
+    const l = n.lim.parameters;
+    l.get('enabled').value = v.limOn ? 1 : 0;
+    l.get('ceiling').value = v.limCeil;
     ramp(n.out.gain, this.muted ? 0 : dbToLin(v.outGain));
     ramp(n.board.gain, dbToLin(this.boardDb));
     ramp(n.desktop.gain, dbToLin(this.desktopDb));
@@ -328,13 +330,14 @@ class Engine {
   }
 
   get reduction() {
-    return this.nodes?.comp.reduction ?? 0;
+    return this.reductionDb ?? 0; // dB, zero or negative
   }
 
   get latencyMs() {
     if (!this.ctx) return 0;
     const noiseFrame = this.values.nsOn && this.rnReady ? 0.01 : 0; // RNNoise buffers one 10 ms frame
-    return Math.round((this.ctx.baseLatency + (this.ctx.outputLatency || 0) + noiseFrame) * 1000);
+    const limiter = this.values.limOn ? 0.002 : 0; // lookahead
+    return Math.round((this.ctx.baseLatency + (this.ctx.outputLatency || 0) + noiseFrame + limiter) * 1000);
   }
 
   async stop() {
