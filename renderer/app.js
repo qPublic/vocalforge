@@ -257,6 +257,19 @@ function setupMute() {
 }
 
 // ---------- settings / debug ----------
+async function setupGeneral() {
+  const cfg = await window.vf.getSettings();
+  $('optLaunch').checked = cfg.launchAtLogin;
+  $('optTray').checked = cfg.closeToTray;
+  $('optAutoStart').checked = !!store.autoStartMixer;
+  $('optLaunch').addEventListener('change', (e) => window.vf.setSettings({ launchAtLogin: e.target.checked }));
+  $('optTray').addEventListener('change', (e) => window.vf.setSettings({ closeToTray: e.target.checked }));
+  $('optAutoStart').addEventListener('change', (e) => {
+    store.autoStartMixer = e.target.checked;
+    persist();
+  });
+}
+
 function setupSettings() {
   const dlg = $('settings');
   const note = (t) => ($('dbgNote').textContent = t);
@@ -286,6 +299,7 @@ function setupSettings() {
   setupUpdates();
   setupSettings();
   setupMute();
+  setupGeneral();
   Soundboard.init();
   refreshPresets(store.last);
   if (store.last === '(custom)' || !allPresets()[store.last]) {
@@ -303,4 +317,5 @@ function setupSettings() {
   navigator.mediaDevices.addEventListener('devicechange', () => loadDevices().catch(() => {}));
   tick();
   if (!store.setupDone) Wizard.open();
+  else if (store.autoStartMixer && !running) toggle();
 })();

@@ -12,5 +12,7 @@ contextBridge.exposeInMainWorld('vf', {
   removeSound: (name) => ipcRenderer.invoke('sounds:remove', name),
   setHotkeys: (list) => ipcRenderer.invoke('hotkeys:set', list),
   onHotkey: (cb) => ipcRenderer.on('hotkey', (_e, action) => cb(action)),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   onUpdateStatus: (cb) => ipcRenderer.on('update:status', (_e, status) => cb(status)),
 });

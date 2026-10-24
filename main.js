@@ -1,15 +1,21 @@
-const { app, BrowserWindow, dialog, globalShortcut, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, session, shell, Tray } = require('electron');
 const path = require('path');
 const sounds = require('./lib/sounds');
 const hotkeys = require('./lib/hotkeys');
+const appSettings = require('./lib/settings');
 
 let win;
+let tray;
+let quitting = false;
+let settings = appSettings.DEFAULTS;
+const startHidden = process.argv.includes('--hidden');
 
 function createWindow() {
   win = new BrowserWindow({
     width: 1100,
     height: 760,
     backgroundColor: '#14161a',
+    show: !startHidden,
     title: 'VocalForge',
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
@@ -20,30 +26,79 @@ function createWindow() {
   });
   win.setMenuBarVisibility(false);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  // With "close to tray" on, the close button hides the window and the mixer keeps running.
+  win.on('close', (e) => {
+    if (settings.closeToTray && !quitting) {
+      e.preventDefault();
+      win.hide();
+    }
+  });
+}
+
+function showWindow() {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')).resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip('VocalForge');
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Show VocalForge', click: showWindow },
+      { label: 'Mute / unmute mic', click: () => win && win.webContents.send('hotkey', 'mute') },
+      { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() },
+    ]),
+  );
+  tray.on('click', showWindow);
+}
+
+function applySettings() {
+  // Only register a login item for the installed app, never for `npm start` (that would point at electron.exe).
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, args: settings.launchAtLogin ? ['--hidden'] : [] });
+  }
 }
 
 // One running copy at a time: two would fight over the mic and the global hotkeys.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (!win) return;
-    if (win.isMinimized()) win.restore();
-    win.focus();
-  });
+  app.on('second-instance', showWindow);
 
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
       cb(permission === 'media');
     });
+    settings = appSettings.load(path.join(app.getPath('userData'), 'settings.json'));
     createWindow();
+    createTray();
+    applySettings();
+    setupSettings();
     setupSoundboard();
     setupUpdates();
   });
 }
 
 app.on('window-all-closed', () => app.quit());
+app.on('before-quit', () => (quitting = true));
 app.on('will-quit', () => globalShortcut.unregisterAll());
+
+// ---------- app settings (tray / startup) ----------
+function setupSettings() {
+  const file = path.join(app.getPath('userData'), 'settings.json');
+  ipcMain.handle('settings:get', () => settings);
+  ipcMain.handle('settings:set', (_e, patch) => {
+    settings = appSettings.save(file, { ...settings, ...patch });
+    applySettings();
+    return settings;
+  });
+}
 
 // ---------- soundboard + global hotkeys ----------
 const soundsDir = () => path.join(app.getPath('userData'), 'sounds');

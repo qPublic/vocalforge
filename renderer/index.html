@@ -66,6 +66,12 @@
     <form method="dialog">
       <h3>Settings</h3>
       <section>
+        <h4>General</h4>
+        <label class="opt"><input type="checkbox" id="optLaunch"> Launch VocalForge when Windows starts <small>(starts hidden in the tray)</small></label>
+        <label class="opt"><input type="checkbox" id="optTray"> Closing the window keeps it running in the tray</label>
+        <label class="opt"><input type="checkbox" id="optAutoStart"> Start the mixer automatically</label>
+      </section>
+      <section>
         <h4>Setup</h4>
         <p>Run the guided setup again to pick your mic, output and sound.</p>
         <button type="button" id="runSetupBtn">Run setup wizard</button>

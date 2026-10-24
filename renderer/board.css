@@ -28,3 +28,7 @@
   background: #1d2026; border: 1px solid var(--line); border-left: 3px solid var(--good); border-radius: 8px; padding: 10px 14px; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
 #toast.error { border-left-color: var(--hot); }
 #toast[hidden] { display: none; }
+
+/* ---------- general options ---------- */
+.opt { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; padding: 4px 0; }
+.opt small { color: var(--dim); }
