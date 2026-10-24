@@ -204,7 +204,7 @@ const Wizard = (() => {
     const token = (meter = { stopped: false });
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: choice.mic && choice.mic !== 'default' ? { exact: choice.mic } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        audio: { deviceId: webMicId(choice.mic), echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       });
       if (token.stopped) return stream.getTracks().forEach((t) => t.stop());
       const ctx = new AudioContext();

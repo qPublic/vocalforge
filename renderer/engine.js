@@ -90,6 +90,14 @@ class Engine {
     };
   }
 
+  get isNative() {
+    return false;
+  }
+
+  listDevices() {
+    return Engine.listDevices();
+  }
+
   // Switch the output device without restarting the mixer.
   async setOutput(deviceId) {
     if (this.ctx && this.ctx.setSinkId) await this.ctx.setSinkId(deviceId === 'default' ? '' : deviceId);
@@ -296,7 +304,7 @@ class Engine {
   }
 
   setBoardLevel(db) {
-    this.boardDb = db;
+    this.boardDb = Math.min(0, db);
     this.apply();
   }
 

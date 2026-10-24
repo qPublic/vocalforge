@@ -56,7 +56,7 @@
       <h2>Soundboard</h2>
       <button id="boardAdd">Add sounds…</button>
       <button id="boardBrowse">Browse sound packs…</button>
-      <label>Volume <input type="range" id="boardVol" min="-30" max="6" step="1"> <b id="boardVolVal"></b></label>
+      <label>Volume <input type="range" id="boardVol" min="-40" max="0" step="1"> <b id="boardVolVal"></b></label>
       <span class="stopGroup"><button id="boardStop">Stop all</button><span id="stopChip"></span></span>
       <span id="boardStatus" role="status"></span>
     </div>
@@ -81,6 +81,16 @@
         <label class="opt"><input type="checkbox" id="optLaunch"> Launch VocalForge when Windows starts <small>(starts hidden in the tray)</small></label>
         <label class="opt"><input type="checkbox" id="optTray"> Closing the window keeps it running in the tray</label>
         <label class="opt"><input type="checkbox" id="optAutoStart"> Start the mixer automatically</label>
+        <label class="opt"><input type="checkbox" id="optNative"> Use the native audio engine <small>(beta)</small></label>
+        <label class="opt">Native buffer
+          <select id="optBuffer">
+            <option value="128">128 frames (2.7 ms, lowest delay)</option>
+            <option value="240">240 frames (5 ms)</option>
+            <option value="480">480 frames (10 ms)</option>
+            <option value="960">960 frames (20 ms, safest)</option>
+          </select>
+        </label>
+        <p class="dbgNote" id="nativeNote"></p>
       </section>
       <section>
         <h4>Setup</h4>
@@ -107,6 +117,7 @@
   </dialog>
 
   <script src="engine.js"></script>
+  <script src="native-engine.js"></script>
   <script src="app.js"></script>
   <script src="autotune-core.js"></script>
   <script src="autotune.js"></script>

@@ -1,5 +1,7 @@
 const { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, session, shell, Tray } = require('electron');
+const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const sounds = require('./lib/sounds');
 const hotkeys = require('./lib/hotkeys');
 const appSettings = require('./lib/settings');
@@ -86,10 +88,11 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
     settings = appSettings.load(path.join(app.getPath('userData'), 'settings.json'));
+    setupSettings();
+    setupEngine();
     createWindow();
     createTray();
     applySettings();
-    setupSettings();
     setupSoundboard();
     setupUpdates();
   });
@@ -97,7 +100,10 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', () => (quitting = true));
-app.on('will-quit', () => globalShortcut.unregisterAll());
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  if (engineProc) engineProc.kill();
+});
 
 // ---------- app settings (tray / startup) ----------
 function setupSettings() {
@@ -107,6 +113,71 @@ function setupSettings() {
     settings = appSettings.save(file, { ...settings, ...patch });
     applySettings();
     return settings;
+  });
+}
+
+// ---------- native audio engine (optional) ----------
+// engine.exe speaks JSON lines on stdin/stdout. The renderer sends whitelisted commands through
+// 'engine:send' and receives every engine event through 'engine:event'.
+let engineProc = null;
+const ENGINE_CMDS = new Set(['hello', 'devices', 'start', 'stop', 'set', 'mute', 'boardLevel', 'desktop', 'desktopLevel', 'output', 'play', 'stopSounds']);
+const enginePath = () => (app.isPackaged ? path.join(process.resourcesPath, 'engine', 'engine.exe') : path.join(__dirname, 'engine', 'build', 'engine.exe'));
+const engineAvailable = () => fs.existsSync(enginePath());
+const sendEngineEvent = (evt) => win && !win.isDestroyed() && win.webContents.send('engine:event', evt);
+
+function ensureEngine() {
+  if (engineProc) return true;
+  if (!engineAvailable()) return false;
+  const proc = spawn(enginePath(), [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+  engineProc = proc;
+  let buffer = '';
+  proc.stdout.setEncoding('utf8');
+  proc.stdout.on('data', (chunk) => {
+    buffer += chunk;
+    for (let i = buffer.indexOf('\n'); i >= 0; i = buffer.indexOf('\n')) {
+      const line = buffer.slice(0, i).trim();
+      buffer = buffer.slice(i + 1);
+      if (!line) continue;
+      try {
+        sendEngineEvent(JSON.parse(line));
+      } catch {}
+    }
+  });
+  proc.stderr.on('data', () => {});
+  proc.stdin.on('error', () => {});
+  proc.on('error', (err) => {
+    if (engineProc === proc) engineProc = null;
+    sendEngineEvent({ event: 'exited', message: err.message });
+  });
+  proc.on('exit', (code) => {
+    if (engineProc === proc) engineProc = null;
+    sendEngineEvent({ event: 'exited', code });
+  });
+  return true;
+}
+
+function setupEngine() {
+  // The preload reads this synchronously, before the page's scripts run.
+  ipcMain.on('engine:config', (e) => {
+    e.returnValue = { available: engineAvailable(), enabled: !!settings.nativeEngine };
+  });
+  ipcMain.handle('engine:send', (_e, cmd) => {
+    if (!cmd || typeof cmd !== 'object' || !ENGINE_CMDS.has(cmd.cmd)) return false;
+    if (!ensureEngine()) return false;
+    const msg = { ...cmd };
+    if (cmd.cmd === 'play') {
+      // The renderer names a clip; only the main process knows where the library lives.
+      try {
+        msg.path = path.join(soundsDir(), sounds.safeName(cmd.name));
+      } catch {
+        return false;
+      }
+      delete msg.name;
+    }
+    const line = JSON.stringify(msg);
+    if (line.length > 100000) return false;
+    engineProc.stdin.write(line + '\n');
+    return true;
   });
 }
 

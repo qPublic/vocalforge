@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('vf', {
+  engineConfig: ipcRenderer.sendSync('engine:config'),
+  sendEngine: (cmd) => ipcRenderer.invoke('engine:send', cmd),
+  onEngineEvent: (cb) => ipcRenderer.on('engine:event', (_e, evt) => cb(evt)),
   getVersion: () => ipcRenderer.invoke('app:version'),
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),

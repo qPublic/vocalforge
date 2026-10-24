@@ -28,7 +28,7 @@ function fakeDevices() {
 }
 
 // Returns { dom, window, errors, calls, settle }. `vf` overrides parts of the fake window.vf bridge.
-async function loadApp({ vf = {}, store } = {}) {
+async function loadApp({ vf = {}, store, native = false, engineAvailable = native } = {}) {
   const errors = [];
   const calls = [];
   const vc = new VirtualConsole();
@@ -56,7 +56,32 @@ async function loadApp({ vf = {}, store } = {}) {
     installPack: record('installPack', async () => ({ added: [], failed: [] })),
     setHotkeys: record('setHotkeys', async (l) => l.map((h) => ({ ...h, ok: true }))),
     onHotkey: () => {},
+    engineConfig: { available: engineAvailable, enabled: native },
+    sendEngine: () => Promise.resolve(false),
+    onEngineEvent: () => {},
   };
+
+  // A stand-in for engine.exe: records every command and answers like the real one.
+  const engineLog = [];
+  let engineHandler = () => {};
+  if (native) {
+    bridge.onEngineEvent = (cb) => (engineHandler = cb);
+    bridge.sendEngine = (cmd) => {
+      engineLog.push(cmd);
+      const reply = (evt) => setTimeout(() => engineHandler({ ...evt, id: cmd.id }), 0);
+      if (cmd.cmd === 'devices') {
+        reply({
+          event: 'devices',
+          inputs: [{ deviceId: 'default', label: 'Default device' }, { deviceId: 'aa', label: 'Native Mic' }],
+          outputs: [{ deviceId: 'default', label: 'Default device' }, { deviceId: 'bb', label: 'CABLE Input (VB-Audio Virtual Cable)' }],
+        });
+      } else if (cmd.cmd === 'start') reply({ event: 'started', latencyMs: 12 });
+      else if (cmd.cmd === 'stop') reply({ event: 'stopped' });
+      else if (cmd.cmd === 'play') reply({ event: 'played' });
+      else if (['desktop', 'output'].includes(cmd.cmd)) reply({ event: 'ok' });
+      return Promise.resolve(true);
+    };
+  }
   for (const [k, fn] of Object.entries(vf)) bridge[k] = record(k, fn);
 
   const dom = new JSDOM(pageHtml(), {
@@ -70,6 +95,7 @@ async function loadApp({ vf = {}, store } = {}) {
       // jsdom has no media playback or blob URLs.
       window.HTMLMediaElement.prototype.play = async function () {
         window.__played = (window.__played || 0) + 1;
+        window.__lastVolume = this.volume;
       };
       window.HTMLMediaElement.prototype.pause = function () {};
       window.URL.createObjectURL = () => 'blob:test';
@@ -90,7 +116,7 @@ async function loadApp({ vf = {}, store } = {}) {
 
   const settle = (ms = 30) => new Promise((r) => setTimeout(r, ms));
   await settle(250); // let the async init (device list, wizard) finish
-  return { dom, window, errors, calls, settle };
+  return { dom, window, errors, calls, settle, engineLog, emitEngine: (evt) => engineHandler(evt) };
 }
 
 module.exports = { loadApp };

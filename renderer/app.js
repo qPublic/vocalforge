@@ -1,5 +1,12 @@
 const $ = (id) => document.getElementById(id);
-const engine = new Engine();
+// The native engine is opt-in (Settings) and only used when engine.exe is present.
+const nativeCfg = (window.vf && window.vf.engineConfig) || {};
+const engine = nativeCfg.enabled && nativeCfg.available ? new NativeEngine() : new Engine();
+
+// Chromium device ids only mean something to Chromium, so the native engine's mic is not selectable here.
+function webMicId(id) {
+  return engine.isNative || !id || id === 'default' ? undefined : { exact: id };
+}
 const STORE_KEY = 'vocalforge.v1';
 
 const BUILTIN_PRESETS = {
@@ -173,7 +180,7 @@ function fillSelect(sel, devices, saved) {
 }
 
 async function loadDevices() {
-  const { inputs, outputs } = await Engine.listDevices();
+  const { inputs, outputs } = await engine.listDevices();
   fillSelect($('inSel'), inputs, store.devices.in);
   fillSelect($('outSel'), outputs, store.devices.out);
   fillSelect($('monSel'), outputs, store.devices.mon);
@@ -241,6 +248,13 @@ for (const [id, which] of [['inSel', 'in'], ['outSel', 'out'], ['monSel', 'mon']
   $(id).addEventListener('change', () => onDeviceChange(which));
 }
 
+// The native engine can stop on its own (crash, killed): put the UI back to a clean Start state.
+engine.onExited = () => {
+  running = false;
+  $('startBtn').textContent = 'Start';
+  $('startBtn').classList.remove('on');
+};
+
 // ---------- meters ----------
 engine.onGate = (g) => {
   const open = g > 0.5;
@@ -305,6 +319,22 @@ async function setupGeneral() {
   $('optLaunch').checked = cfg.launchAtLogin;
   $('optTray').checked = cfg.closeToTray;
   $('optAutoStart').checked = !!store.autoStartMixer;
+  $('optNative').checked = !!cfg.nativeEngine;
+  $('optNative').disabled = !nativeCfg.available;
+  $('nativeNote').textContent = nativeCfg.available
+    ? 'Lower-latency C++ audio engine. Restart VocalForge after changing this. Noise suppression is not available in it yet.'
+    : 'The native engine file was not found in this install.';
+  $('optBuffer').value = String(store.nativeBuffer || 240);
+  $('optBuffer').disabled = !nativeCfg.available;
+  $('optNative').addEventListener('change', (e) => {
+    window.vf.setSettings({ nativeEngine: e.target.checked });
+    $('nativeNote').textContent = 'Restart VocalForge to switch engines.';
+  });
+  $('optBuffer').addEventListener('change', (e) => {
+    store.nativeBuffer = Number(e.target.value);
+    persist();
+    $('nativeNote').textContent = running ? 'Press Stop then Start to apply the new buffer size.' : '';
+  });
   $('optLaunch').addEventListener('change', (e) => window.vf.setSettings({ launchAtLogin: e.target.checked }));
   $('optTray').addEventListener('change', (e) => window.vf.setSettings({ closeToTray: e.target.checked }));
   $('optAutoStart').addEventListener('change', (e) => {

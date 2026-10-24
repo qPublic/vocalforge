@@ -150,3 +150,63 @@ test('a failing preview shows an error message instead of failing silently', asy
   assert.match(window.document.getElementById('toast').textContent, /file is gone/);
   window.close();
 });
+
+// ---------- soundboard volume safety ----------
+const ONE_SOUND = { listSounds: async () => [{ name: 'ding.wav', size: 5 }] };
+const approx = (a, b, eps = 0.005) => Math.abs(a - b) < eps;
+
+test('volume: previews default to a safe level (-12 dB), not full scale', async () => {
+  const { window, settle } = await loadApp({ store: SKIP_WIZARD, vf: ONE_SOUND });
+  window.document.querySelector('.padPrev').click();
+  await settle();
+  assert.ok(approx(window.__lastVolume, 0.2512), `volume was ${window.__lastVolume}`);
+  window.close();
+});
+
+test('volume: the slider controls previews and never exceeds full scale', async () => {
+  const { window, settle } = await loadApp({ store: SKIP_WIZARD, vf: ONE_SOUND });
+  const slider = window.document.getElementById('boardVol');
+  assert.equal(slider.max, '0', 'slider must not go above 0 dB');
+  const move = (db) => {
+    slider.value = String(db);
+    slider.dispatchEvent(new window.Event('input', { bubbles: true }));
+  };
+  move(-20);
+  window.document.querySelector('.padPrev').click();
+  await settle();
+  assert.ok(approx(window.__lastVolume, 0.1), `-20 dB gave ${window.__lastVolume}`);
+  move(0);
+  window.document.querySelector('.padPrev').click();
+  await settle();
+  assert.ok(approx(window.__lastVolume, 1), `0 dB gave ${window.__lastVolume}`);
+  assert.ok(window.__lastVolume <= 1);
+  window.close();
+});
+
+test('volume: a saved loud level (0 dB) is lowered once, then respected', async () => {
+  // Existing install that still has the old default.
+  const old = await loadApp({ store: { ...SKIP_WIZARD, board: { db: 0 } }, vf: ONE_SOUND });
+  assert.equal(old.window.document.getElementById('boardVol').value, '-12');
+  const saved = JSON.parse(old.window.localStorage.getItem('vocalforge.v1'));
+  assert.equal(saved.board.db, -12);
+  assert.equal(saved.boardLevelMigrated, true);
+  old.window.close();
+
+  // After the migration the user's own choice is kept, even if it is louder than the safe default.
+  const later = await loadApp({ store: { ...SKIP_WIZARD, boardLevelMigrated: true, board: { db: -3 } }, vf: ONE_SOUND });
+  assert.equal(later.window.document.getElementById('boardVol').value, '-3');
+  later.window.close();
+
+  // A quieter saved level is never raised.
+  const quiet = await loadApp({ store: { ...SKIP_WIZARD, board: { db: -25 } }, vf: ONE_SOUND });
+  assert.equal(quiet.window.document.getElementById('boardVol').value, '-25');
+  quiet.window.close();
+});
+
+test('volume: the mixer path is capped at 0 dB too', async () => {
+  const { window } = await loadApp({ store: SKIP_WIZARD });
+  window.engine = window.eval('engine');
+  window.engine.setBoardLevel(6);
+  assert.equal(window.engine.boardDb, 0);
+  window.close();
+});

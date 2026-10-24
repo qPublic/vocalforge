@@ -59,6 +59,12 @@
         "repo": "vocalforge",
         "releaseType": "release"
       }
+    ],
+    "extraResources": [
+      {
+        "from": "engine/build/engine.exe",
+        "to": "engine/engine.exe"
+      }
     ]
   }
 }

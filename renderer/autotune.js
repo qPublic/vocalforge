@@ -94,9 +94,8 @@ const AutoTune = (() => {
   }
 
   async function startRec() {
-    const id = $('inSel').value;
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { deviceId: id && id !== 'default' ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      audio: { deviceId: webMicId($('inSel').value), echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
     const ctx = new AudioContext();
     const analyser = ctx.createAnalyser();

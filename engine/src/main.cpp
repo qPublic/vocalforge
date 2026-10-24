@@ -266,7 +266,7 @@ class Engine {
     dirty_ = true;
   }
   void setMuted(bool m) { muted_ = m; }
-  void setBoardDb(double db) { boardLin_ = (float)dbToLin(std::min(6.0, std::max(-60.0, db))); }
+  void setBoardDb(double db) { boardLin_ = (float)dbToLin(std::min(0.0, std::max(-60.0, db))); }
   void setDesktopDb(double db) { deskLin_ = (float)dbToLin(std::min(6.0, std::max(-60.0, db))); }
   void stopSounds() { clearVoices_ = true; }
 
