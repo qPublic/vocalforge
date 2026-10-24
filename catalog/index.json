@@ -229,6 +229,207 @@
           "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/drama-impact/drama-applause.wav"
         }
       ]
+    },
+    {
+      "id": "sci-fi",
+      "name": "Sci-fi and space",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Teleports, scanners, shields, warp drives and computer beeps.",
+      "clips": [
+        {
+          "name": "scifi-teleport.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-teleport.wav"
+        },
+        {
+          "name": "scifi-scanner.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-scanner.wav"
+        },
+        {
+          "name": "scifi-shield.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-shield.wav"
+        },
+        {
+          "name": "scifi-alarm.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-alarm.wav"
+        },
+        {
+          "name": "scifi-warp.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-warp.wav"
+        },
+        {
+          "name": "scifi-computer.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-computer.wav"
+        },
+        {
+          "name": "scifi-powerdown.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-powerdown.wav"
+        },
+        {
+          "name": "scifi-ufo.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sci-fi/scifi-ufo.wav"
+        }
+      ]
+    },
+    {
+      "id": "nature",
+      "name": "Nature and weather",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Rain, thunder, wind, birds, fire crackle and ocean waves.",
+      "clips": [
+        {
+          "name": "nature-rain.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-rain.wav"
+        },
+        {
+          "name": "nature-thunder.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-thunder.wav"
+        },
+        {
+          "name": "nature-wind.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-wind.wav"
+        },
+        {
+          "name": "nature-birds.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-birds.wav"
+        },
+        {
+          "name": "nature-drip.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-drip.wav"
+        },
+        {
+          "name": "nature-fire.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-fire.wav"
+        },
+        {
+          "name": "nature-waves.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/nature/nature-waves.wav"
+        }
+      ]
+    },
+    {
+      "id": "interface",
+      "name": "Interface sounds",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Clicks, toggles, swipes, key presses and a typewriter bell.",
+      "clips": [
+        {
+          "name": "ui-click.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-click.wav"
+        },
+        {
+          "name": "ui-toggle-on.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-toggle-on.wav"
+        },
+        {
+          "name": "ui-toggle-off.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-toggle-off.wav"
+        },
+        {
+          "name": "ui-swipe.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-swipe.wav"
+        },
+        {
+          "name": "ui-keypress.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-keypress.wav"
+        },
+        {
+          "name": "ui-typewriter-bell.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-typewriter-bell.wav"
+        },
+        {
+          "name": "ui-thud.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-thud.wav"
+        },
+        {
+          "name": "ui-tick.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/interface/ui-tick.wav"
+        }
+      ]
+    },
+    {
+      "id": "fanfares",
+      "name": "Fanfares and music",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Ta-da, victory fanfare, harp gliss, piano chord, drum roll and stingers.",
+      "clips": [
+        {
+          "name": "music-tada.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-tada.wav"
+        },
+        {
+          "name": "music-victory.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-victory.wav"
+        },
+        {
+          "name": "music-harp-gliss.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-harp-gliss.wav"
+        },
+        {
+          "name": "music-piano-chord.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-piano-chord.wav"
+        },
+        {
+          "name": "music-drumroll.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-drumroll.wav"
+        },
+        {
+          "name": "music-trumpet-call.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-trumpet-call.wav"
+        },
+        {
+          "name": "music-sting-happy.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-sting-happy.wav"
+        },
+        {
+          "name": "music-sting-sad.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/fanfares/music-sting-sad.wav"
+        }
+      ]
+    },
+    {
+      "id": "everyday",
+      "name": "Everyday sounds",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Doorbell, phone ring, camera shutter, knocking, alarm clock and a siren.",
+      "clips": [
+        {
+          "name": "everyday-doorbell.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-doorbell.wav"
+        },
+        {
+          "name": "everyday-phone-ring.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-phone-ring.wav"
+        },
+        {
+          "name": "everyday-camera.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-camera.wav"
+        },
+        {
+          "name": "everyday-knock.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-knock.wav"
+        },
+        {
+          "name": "everyday-alarm-clock.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-alarm-clock.wav"
+        },
+        {
+          "name": "everyday-siren.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-siren.wav"
+        },
+        {
+          "name": "everyday-elevator-ding.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-elevator-ding.wav"
+        },
+        {
+          "name": "everyday-typing.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-typing.wav"
+        }
+      ]
     }
   ]
 }
