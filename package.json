@@ -1,6 +1,6 @@
 {
   "name": "vocalforge",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
@@ -36,7 +36,8 @@
       {
         "provider": "github",
         "owner": "qPublic",
-        "repo": "vocalforge"
+        "repo": "vocalforge",
+        "releaseType": "release"
       }
     ]
   }
