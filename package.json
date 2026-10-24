@@ -4,7 +4,7 @@
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "node scripts/start.js"
   },
   "license": "MIT",
   "devDependencies": {
