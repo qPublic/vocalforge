@@ -145,3 +145,61 @@ test('limiter: disabled does not touch the level', () => {
   for (const s of out) peak = Math.max(peak, Math.abs(s));
   assert.ok(peak > 0.94, `peak ${peak}`);
 });
+
+// ---------- blown-out mic ----------
+test('blown-out mic: disabled passes audio through untouched', () => {
+  const Blown = loadProcessor('blown-processor.js', 'blown-processor');
+  const input = mix(tone(300, 0.3, 0.3), tone(2000, 0.1, 0.3));
+  assert.deepEqual(run(Blown, input, { enabled: 0 }), input);
+});
+
+test('blown-out mic: a quiet voice is slammed into hard clipping', () => {
+  const Blown = loadProcessor('blown-processor.js', 'blown-processor');
+  const input = tone(500, 0.05, 0.5); // -26 dBFS: clean and quiet
+  const out = run(Blown, input, { enabled: 1, drive: 30, bits: 12, hold: 1, tone: 16000, level: 0 });
+  const skip = 4800;
+  // Hard clipping turns the sine into a near-square wave: the RMS gets close to the peak.
+  let peak = 0;
+  for (let i = skip; i < out.length; i++) peak = Math.max(peak, Math.abs(out[i]));
+  const crest = db(peak) - db(rms(out, skip));
+  assert.ok(crest < 2.5, `crest factor ${crest.toFixed(2)} dB, expected a flattened waveform`);
+  assert.ok(db(rms(out, skip)) > db(rms(input, skip)) + 15, 'expected a big loudness jump');
+});
+
+test('blown-out mic: low bit depth crushes quiet detail into silence', () => {
+  const Blown = loadProcessor('blown-processor.js', 'blown-processor');
+  const quiet = tone(1000, 0.01, 0.5); // -40 dBFS, smaller than a 4-bit step
+  const full = run(Blown, quiet, { enabled: 1, drive: 0, bits: 16, hold: 1, tone: 16000, level: 0 });
+  const crushed = run(Blown, quiet, { enabled: 1, drive: 0, bits: 4, hold: 1, tone: 16000, level: 0 });
+  assert.ok(db(rms(full, 4800)) > -50, `16-bit should keep the signal, got ${db(rms(full, 4800)).toFixed(1)} dB`);
+  assert.ok(db(rms(crushed, 4800)) < -80, `4-bit should drop it into the dead zone, got ${db(rms(crushed, 4800)).toFixed(1)} dB`);
+});
+
+test('blown-out mic: sample hold holds each value for N samples', () => {
+  const Blown = loadProcessor('blown-processor.js', 'blown-processor');
+  const input = tone(200, 0.4, 0.2);
+  // Run with the low-pass wide open so the steps survive; count how often the output changes.
+  const changes = (a) => {
+    let n = 0;
+    for (let i = 2401; i < a.length; i++) if (Math.abs(a[i] - a[i - 1]) > 1e-3) n++;
+    return n;
+  };
+  const one = run(Blown, input, { enabled: 1, drive: 6, bits: 16, hold: 1, tone: 16000, level: 0 });
+  const eight = run(Blown, input, { enabled: 1, drive: 6, bits: 16, hold: 8, tone: 16000, level: 0 });
+  assert.ok(changes(eight) <= changes(one), 'holding should not add changes');
+  assert.ok(db(rms(eight, 4800)) < db(rms(one, 4800)) + 1, 'level should stay in the same range');
+});
+
+test('blown-out mic: the tone control removes high frequencies', () => {
+  const Blown = loadProcessor('blown-processor.js', 'blown-processor');
+  const hiss = tone(9000, 0.2, 0.5);
+  const dark = run(Blown, hiss, { enabled: 1, drive: 0, bits: 16, hold: 1, tone: 2000, level: 0 });
+  const open = run(Blown, hiss, { enabled: 1, drive: 0, bits: 16, hold: 1, tone: 16000, level: 0 });
+  assert.ok(db(rms(open, 4800)) - db(rms(dark, 4800)) > 15, 'a 2 kHz cut should strongly reduce a 9 kHz tone');
+});
+
+test('blown-out mic: output stays finite and within full scale at the default settings', () => {
+  const Blown = loadProcessor('blown-processor.js', 'blown-processor');
+  const out = run(Blown, mix(tone(180, 0.9, 1), tone(3000, 0.5, 1)), { enabled: 1 });
+  for (const s of out) assert.ok(Number.isFinite(s) && Math.abs(s) <= 1.01, `bad sample ${s}`);
+});

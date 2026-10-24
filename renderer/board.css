@@ -23,6 +23,8 @@
 .padRow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .padDel { padding: 2px 7px; font-size: 12px; color: var(--dim); }
 
+#blownBtn.on { background: #ff9d2e; color: #1c1100; border-color: #ff9d2e; font-weight: 600; }
+
 /* ---------- toast ---------- */
 #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60; max-width: min(560px, 92vw);
   background: #1d2026; border: 1px solid var(--line); border-left: 3px solid var(--good); border-radius: 8px; padding: 10px 14px; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }

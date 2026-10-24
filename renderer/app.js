@@ -7,6 +7,7 @@ const BUILTIN_PRESETS = {
   'Warm podcast': { eqLow: 4, eqMud: -3, eqPres: 2, eqAir: 0, compRatio: 4, compThr: -26, makeup: 7 },
   'Bright streamer': { eqLow: 0, eqMud: -3, eqPres: 5, eqAir: 4, compRatio: 3, makeup: 6, gateThr: -48 },
   'Noisy room': { nsOn: true, nsAmt: 100, hpfFreq: 120, deessThr: -34, gateThr: -40, gateRel: 0.12, eqMud: -4, compRatio: 5, compThr: -28 },
+  'Blown-out mic': { lofiOn: true, deessOn: false },
   Flat: { hpfOn: false, gateOn: false, eqOn: false, deessOn: false, compOn: false, limOn: true, makeup: 0 },
 };
 
@@ -87,6 +88,7 @@ function buildPanels() {
 
 function showValues() {
   for (const [id, s] of Object.entries(sliders)) s.set(engine.values[id]);
+  syncBlownButton();
 }
 
 // ---------- presets ----------
@@ -142,6 +144,18 @@ $('resetBtn').addEventListener('click', () => {
 });
 
 $('autoBtn').addEventListener('click', () => AutoTune.open());
+
+// Quick toggle for the blown-out mic effect (the same switch as in its panel).
+function syncBlownButton() {
+  const on = !!engine.values.lofiOn;
+  $('blownBtn').classList.toggle('on', on);
+  $('blownBtn').setAttribute('aria-pressed', String(on));
+}
+$('blownBtn').addEventListener('click', () => {
+  engine.set('lofiOn', !engine.values.lofiOn);
+  showValues();
+  markCustom();
+});
 
 // ---------- devices / transport ----------
 function fillSelect(sel, devices, saved) {

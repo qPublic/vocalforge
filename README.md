@@ -37,6 +37,7 @@ Builds are unsigned, so Windows SmartScreen will warn on first run ("More info" 
 - [x] Desktop audio channel (music, game audio) with its own level
 - [ ] Routing matrix and more inputs
 - [x] De-esser
+- [x] Blown-out mic toggle: loud, clipped, crunchy bad-mic effect (one click, adjustable)
 - [x] Auto-tune wizard (listens to your room and voice, suggests gate/EQ/de-esser/compressor)
 - [x] In-app setup wizard (Settings > Debug previews it)
 - [x] Local soundboard with global hotkeys, played into the mic output; global mute hotkey

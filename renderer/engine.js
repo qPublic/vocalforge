@@ -39,6 +39,14 @@ const PARAMS = {
     { id: 'compRel', label: 'Release', min: 0.05, max: 1, step: 0.01, def: 0.2, unit: 's' },
     { id: 'makeup', label: 'Makeup gain', min: 0, max: 24, step: 0.5, def: 8, unit: 'dB' },
   ],
+  'Blown-out mic': [
+    { id: 'lofiOn', label: 'On', type: 'toggle', def: false },
+    { id: 'lofiDrive', label: 'Drive', min: 0, max: 50, step: 1, def: 26, unit: 'dB' },
+    { id: 'lofiBits', label: 'Crunch (bits)', min: 3, max: 16, step: 1, def: 9, unit: 'bit' },
+    { id: 'lofiHold', label: 'Rate crush', min: 1, max: 16, step: 1, def: 3, unit: 'x' },
+    { id: 'lofiTone', label: 'Top cut', min: 1500, max: 16000, step: 100, def: 5500, unit: 'Hz' },
+    { id: 'lofiLevel', label: 'Level', min: -24, max: 6, step: 0.5, def: -4, unit: 'dB' },
+  ],
   Limiter: [
     { id: 'limOn', label: 'On', type: 'toggle', def: true },
     { id: 'limCeil', label: 'Ceiling', min: -12, max: 0, step: 0.5, def: -1.5, unit: 'dB' },
@@ -95,6 +103,7 @@ class Engine {
     await ctx.audioWorklet.addModule('deesser-processor.js');
     await ctx.audioWorklet.addModule('compressor-processor.js');
     await ctx.audioWorklet.addModule('limiter-processor.js');
+    await ctx.audioWorklet.addModule('blown-processor.js');
     // Noise suppression is optional: if the WASM can't load, carry on without it.
     this.rnReady = false;
     let rnLoaded = false;
@@ -139,6 +148,7 @@ class Engine {
     // stacked with ours and pushed the signal into the limiter.
     n.comp = new AudioWorkletNode(ctx, 'compressor-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.comp.port.onmessage = (e) => (this.reductionDb = e.data.reduction);
+    n.blown = new AudioWorkletNode(ctx, 'blown-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.lim = new AudioWorkletNode(ctx, 'limiter-processor', { channelCountMode: 'explicit', channelCount: 1 });
     // Soundboard clips join just before the limiter, so they skip the voice processing.
     n.board = ctx.createGain();
@@ -150,7 +160,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.blown, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.out.connect(n.outMeter);
@@ -228,6 +238,14 @@ class Engine {
     c.get('attack').value = v.compAtk;
     c.get('release').value = v.compRel;
     c.get('makeup').value = v.makeup;
+
+    const b = n.blown.parameters;
+    b.get('enabled').value = v.lofiOn ? 1 : 0;
+    b.get('drive').value = v.lofiDrive;
+    b.get('bits').value = v.lofiBits;
+    b.get('hold').value = v.lofiHold;
+    b.get('tone').value = v.lofiTone;
+    b.get('level').value = v.lofiLevel;
 
     const l = n.lim.parameters;
     l.get('enabled').value = v.limOn ? 1 : 0;
