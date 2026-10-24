@@ -41,6 +41,15 @@
 
   <main id="panels"></main>
 
+  <section class="board desk">
+    <div class="boardHead">
+      <h2>Desktop audio</h2>
+      <label class="opt"><input type="checkbox" id="deskOn"> Mix in what my PC is playing</label>
+      <label>Level <input type="range" id="deskVol" min="-40" max="6" step="1"> <b id="deskVolVal"></b></label>
+    </div>
+    <p class="boardEmpty">Adds music or game audio to your output. It captures everything you hear, so send Output to a virtual cable. If Output is your speakers you will get an echo.</p>
+  </section>
+
   <section class="board">
     <div class="boardHead">
       <h2>Soundboard</h2>
@@ -101,6 +110,7 @@
   <script src="autotune.js"></script>
   <script src="hotkeys.js"></script>
   <script src="soundboard.js"></script>
+  <script src="desktop.js"></script>
   <script src="wizard.js"></script>
 </body>
 </html>

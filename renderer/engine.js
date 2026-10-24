@@ -57,8 +57,11 @@ class Engine {
     this.ctx = null;
     this.values = defaults();
     this.onGate = () => {};
-    this.onNoiseStatus = () => {};
+    this.onError = () => {};
+    this.onDesktopFailed = () => {};
     this.muted = false;
+    this.desktopOn = false;
+    this.desktopDb = -6;
     this.boardDb = 0;
     this.sounds = new Map(); // decoded clips for the current context, by name
     this.playing = new Set();
@@ -88,7 +91,7 @@ class Engine {
       await ctx.audioWorklet.addModule('rnnoise-processor.js');
       rnLoaded = true;
     } catch (err) {
-      this.onNoiseStatus('Noise suppression is unavailable: ' + err.message);
+      this.onError('Noise suppression is unavailable: ' + err.message);
     }
 
     this.stream = await navigator.mediaDevices.getUserMedia({
@@ -111,7 +114,7 @@ class Engine {
       n.rn = new AudioWorkletNode(ctx, 'rnnoise-processor', { channelCountMode: 'explicit', channelCount: 1 });
       n.rn.port.onmessage = (e) => {
         if (e.data.ready) this.rnReady = true;
-        if (e.data.error) this.onNoiseStatus('Noise suppression failed to start: ' + e.data.error);
+        if (e.data.error) this.onError('Noise suppression failed to start: ' + e.data.error);
       };
     }
     n.gate = new AudioWorkletNode(ctx, 'gate-processor', { channelCountMode: 'explicit', channelCount: 1 });
@@ -132,6 +135,8 @@ class Engine {
     // Soundboard clips join just before the limiter, so they skip the voice processing.
     n.board = ctx.createGain();
     n.board.connect(n.lim);
+    n.desktop = ctx.createGain();
+    n.desktop.connect(n.lim);
     n.out = ctx.createGain();
     n.inMeter = ctx.createAnalyser();
     n.outMeter = ctx.createAnalyser();
@@ -145,6 +150,7 @@ class Engine {
 
     if (monitor) this._startMonitor(monitorId);
     this.apply();
+    if (this.desktopOn) await this._attachDesktop();
     return ctx;
   }
 
@@ -218,11 +224,47 @@ class Engine {
     n.lim.ratio.value = v.limOn ? 20 : 1;
     ramp(n.out.gain, this.muted ? 0 : dbToLin(v.outGain));
     ramp(n.board.gain, dbToLin(this.boardDb));
+    ramp(n.desktop.gain, dbToLin(this.desktopDb));
   }
 
   setMuted(muted) {
     this.muted = muted;
     this.apply();
+  }
+
+  // Desktop audio: everything the PC is playing, captured as system loopback.
+  async setDesktop(on) {
+    this.desktopOn = on;
+    if (!this.ctx) return;
+    if (on) await this._attachDesktop();
+    else this._detachDesktop();
+  }
+
+  setDesktopLevel(db) {
+    this.desktopDb = db;
+    this.apply();
+  }
+
+  async _attachDesktop() {
+    if (this.desktopStream || !this.nodes) return;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      stream.getVideoTracks().forEach((t) => t.stop());
+      if (!stream.getAudioTracks().length) throw new Error('no audio was shared');
+      this.desktopStream = stream;
+      this.desktopSrc = this.ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      this.desktopSrc.connect(this.nodes.desktop);
+    } catch (err) {
+      this.desktopOn = false;
+      this.onDesktopFailed();
+      this.onError('Desktop audio is unavailable: ' + err.message);
+    }
+  }
+
+  _detachDesktop() {
+    this.desktopSrc?.disconnect();
+    this.desktopStream?.getTracks().forEach((t) => t.stop());
+    this.desktopSrc = this.desktopStream = null;
   }
 
   setBoardLevel(db) {
@@ -289,6 +331,7 @@ class Engine {
 
   async stop() {
     this.stream?.getTracks().forEach((t) => t.stop());
+    this._detachDesktop();
     this.monEl?.pause();
     this.monEl = null;
     if (this.ctx) await this.ctx.close();

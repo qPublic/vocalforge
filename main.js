@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, session, shell, Tray } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, session, shell, Tray } = require('electron');
 const path = require('path');
 const sounds = require('./lib/sounds');
 const hotkeys = require('./lib/hotkeys');
@@ -73,7 +73,16 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
-      cb(permission === 'media');
+      cb(permission === 'media' || permission === 'display-capture');
+    });
+    // Desktop audio: grant system loopback audio. The video track that getDisplayMedia needs is discarded by the page.
+    session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+      try {
+        const [screen] = await desktopCapturer.getSources({ types: ['screen'] });
+        callback(screen ? { video: screen, audio: 'loopback' } : {});
+      } catch {
+        callback({});
+      }
     });
     settings = appSettings.load(path.join(app.getPath('userData'), 'settings.json'));
     createWindow();

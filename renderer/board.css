@@ -32,3 +32,6 @@
 /* ---------- general options ---------- */
 .opt { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; padding: 4px 0; }
 .opt small { color: var(--dim); }
+
+.board.desk .boardEmpty { margin-top: 8px; }
+.board.desk input[type=range] { width: 140px; }

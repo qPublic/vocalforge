@@ -34,12 +34,13 @@ Builds are unsigned, so Windows SmartScreen will warn on first run ("More info" 
 - [x] Phase 1: passthrough, meters, device selection
 - [x] Phase 2: gate, EQ, compressor, limiter, presets
 - [x] RNNoise AI noise suppression (off by default; adds 10 ms while on)
-- [ ] Multi-input mixer (mic, desktop audio, music) and routing
+- [x] Desktop audio channel (music, game audio) with its own level
+- [ ] Routing matrix and more inputs
 - [x] De-esser
 - [x] Auto-tune wizard (listens to your room and voice, suggests gate/EQ/de-esser/compressor)
 - [x] In-app setup wizard (Settings > Debug previews it)
 - [x] Local soundboard with global hotkeys, played into the mic output; global mute hotkey
 - [ ] Soundboard: browse public soundboards and install clips in one click (needs a clip source/provider,
       and attention to copyright)
-- [ ] Tray, start with Windows, hotkeys, installer
+- [x] Tray, launch at startup, close to tray, hotkeys
 - [ ] Native engine (Rust/C++) for lower latency

@@ -31,7 +31,7 @@ function toast(message, isError = false) {
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => (t.hidden = true), 6000);
 }
-engine.onNoiseStatus = (msg) => toast(msg, true);
+engine.onError = (msg) => toast(msg, true);
 
 // ---------- panels ----------
 const sliders = {};
@@ -301,6 +301,7 @@ function setupSettings() {
   setupMute();
   setupGeneral();
   Soundboard.init();
+  Desktop.init();
   refreshPresets(store.last);
   if (store.last === '(custom)' || !allPresets()[store.last]) {
     if (store.custom) {
