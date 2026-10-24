@@ -6,6 +6,7 @@
   <title>VocalForge</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="wizard.css">
+  <link rel="stylesheet" href="board.css">
 </head>
 <body>
   <header>
@@ -16,6 +17,7 @@
       <label class="chk"><input type="checkbox" id="monChk"> Monitor</label>
       <label>Monitor to <select id="monSel"></select></label>
       <button id="startBtn">Start</button>
+      <button id="muteBtn" title="Mute your mic output">Mute</button>
       <button id="settingsBtn" class="icon" title="Settings" aria-label="Settings">&#9881;</button>
     </div>
   </header>
@@ -38,6 +40,18 @@
   </section>
 
   <main id="panels"></main>
+
+  <section class="board">
+    <div class="boardHead">
+      <h2>Soundboard</h2>
+      <button id="boardAdd">Add sounds…</button>
+      <label>Volume <input type="range" id="boardVol" min="-30" max="6" step="1"> <b id="boardVolVal"></b></label>
+      <span class="stopGroup"><button id="boardStop">Stop all</button><span id="stopChip"></span></span>
+      <span id="boardStatus" role="status"></span>
+    </div>
+    <p id="boardEmpty" class="boardEmpty">No sounds yet. Add MP3, WAV or OGG clips, give each a global hotkey, and trigger them while you game or stream. They play into your mic output.</p>
+    <div id="padGrid"></div>
+  </section>
   <p class="hint">Tip: set Output to <b>CABLE Input</b> (VB-Cable), then pick <b>CABLE Output</b> as your microphone in Discord/OBS. Use headphones when monitoring to avoid feedback.</p>
 
   <footer>
@@ -53,6 +67,11 @@
         <h4>Setup</h4>
         <p>Run the guided setup again to pick your mic, output and sound.</p>
         <button type="button" id="runSetupBtn">Run setup wizard</button>
+      </section>
+      <section>
+        <h4>Hotkeys</h4>
+        <p>Global shortcuts work even when VocalForge is in the background. Sound hotkeys are set on each pad.</p>
+        <div class="hkRow"><span>Mute microphone</span><span id="muteChip"></span></div>
       </section>
       <section>
         <h4>Debug</h4>
@@ -72,6 +91,8 @@
   <script src="app.js"></script>
   <script src="autotune-core.js"></script>
   <script src="autotune.js"></script>
+  <script src="hotkeys.js"></script>
+  <script src="soundboard.js"></script>
   <script src="wizard.js"></script>
 </body>
 </html>

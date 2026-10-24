@@ -230,6 +230,21 @@ function setupUpdates() {
   btn.addEventListener('click', () => (ready ? window.vf.installUpdate() : window.vf.checkForUpdates()));
 }
 
+// ---------- mute ----------
+let muted = false;
+function setMuted(m) {
+  muted = m;
+  engine.setMuted(m);
+  $('muteBtn').classList.toggle('on', m);
+  $('muteBtn').textContent = m ? 'Muted' : 'Mute';
+}
+
+function setupMute() {
+  $('muteBtn').addEventListener('click', () => setMuted(!muted));
+  Hotkeys.onAction('mute', () => setMuted(!muted));
+  $('muteChip').append(Hotkeys.chip('mute', { defaultAccelerator: 'Control+Alt+M' }));
+}
+
 // ---------- settings / debug ----------
 function setupSettings() {
   const dlg = $('settings');
@@ -259,6 +274,8 @@ function setupSettings() {
   buildPanels();
   setupUpdates();
   setupSettings();
+  setupMute();
+  Soundboard.init();
   refreshPresets(store.last);
   if (store.last === '(custom)' || !allPresets()[store.last]) {
     if (store.custom) {

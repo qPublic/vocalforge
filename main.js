@@ -1,5 +1,7 @@
-const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, dialog, globalShortcut, ipcMain, session, shell } = require('electron');
 const path = require('path');
+const sounds = require('./lib/sounds');
+const hotkeys = require('./lib/hotkeys');
 
 let win;
 
@@ -20,15 +22,57 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
-app.whenReady().then(() => {
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
-    cb(permission === 'media');
+// One running copy at a time: two would fight over the mic and the global hotkeys.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
   });
-  createWindow();
-  setupUpdates();
-});
+
+  app.whenReady().then(() => {
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
+      cb(permission === 'media');
+    });
+    createWindow();
+    setupSoundboard();
+    setupUpdates();
+  });
+}
 
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => globalShortcut.unregisterAll());
+
+// ---------- soundboard + global hotkeys ----------
+const soundsDir = () => path.join(app.getPath('userData'), 'sounds');
+
+function setupSoundboard() {
+  ipcMain.handle('sounds:list', () => sounds.list(soundsDir()));
+  ipcMain.handle('sounds:read', (_e, name) => sounds.read(soundsDir(), name));
+  ipcMain.handle('sounds:remove', (_e, name) => sounds.remove(soundsDir(), name));
+  ipcMain.handle('sounds:add', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Add sounds',
+      properties: ['openFile', 'multiSelect'],
+      filters: [{ name: 'Audio', extensions: [...sounds.EXTENSIONS].map((e) => e.slice(1)) }],
+    });
+    return canceled ? { added: [], skipped: [] } : sounds.add(soundsDir(), filePaths);
+  });
+
+  // The renderer owns the hotkey map; each call replaces every registration.
+  ipcMain.handle('hotkeys:set', (_e, list) => {
+    globalShortcut.unregisterAll();
+    return hotkeys.sanitize(list).map(({ accelerator, action }) => {
+      let ok = false;
+      try {
+        ok = globalShortcut.register(accelerator, () => win && !win.isDestroyed() && win.webContents.send('hotkey', action));
+      } catch {}
+      return { accelerator, action, ok };
+    });
+  });
+}
 
 // ---------- updates (GitHub Releases) ----------
 // The new version installs when the app quits, or right away via the "Restart to update" button.
@@ -59,7 +103,9 @@ function setupUpdates() {
   autoUpdater.on('error', (err) => send({ state: 'error', message: 'Update check failed: ' + err.message }));
 
   const check = () => autoUpdater.checkForUpdates().catch(() => {});
-  ipcMain.handle('update:check', check);
+  ipcMain.handle('update:check', async () => {
+    await check();
+  });
   ipcMain.handle('update:install', () => autoUpdater.quitAndInstall());
   win.webContents.once('did-finish-load', check);
   setInterval(check, 4 * 60 * 60 * 1000);

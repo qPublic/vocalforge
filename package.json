@@ -24,6 +24,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**/*",
       "renderer/**/*",
       "build/icon.png"
     ],

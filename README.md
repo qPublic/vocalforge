@@ -25,7 +25,7 @@ GitHub Releases for new versions and installs them when you close it.
 
 To ship an update: bump `version` in `package.json`, commit, then
 `git tag vX.Y.Z && git push --tags`. GitHub Actions builds and publishes the installer.
-Local test build: `npm run dist` (output in `dist/`).
+Local test build: `npm run dist` (output in `dist/`). Tests: `npm test`.
 
 Builds are unsigned, so Windows SmartScreen will warn on first run ("More info" -> "Run anyway").
 
@@ -34,10 +34,12 @@ Builds are unsigned, so Windows SmartScreen will warn on first run ("More info" 
 - [x] Phase 1: passthrough, meters, device selection
 - [x] Phase 2: gate, EQ, compressor, limiter, presets
 - [ ] RNNoise AI noise suppression
-- [ ] De-esser
-- [ ] Auto-tune wizard (analyze voice, set EQ and compressor)
 - [ ] Multi-input mixer (mic, desktop audio, music) and routing
-- [ ] Soundboard: browse public soundboards, one-click install of their clips, global hotkeys
-      that play clips into the mic chain (needs a clip source/provider, and attention to copyright)
+- [x] De-esser
+- [x] Auto-tune wizard (listens to your room and voice, suggests gate/EQ/de-esser/compressor)
+- [x] In-app setup wizard (Settings > Debug previews it)
+- [x] Local soundboard with global hotkeys, played into the mic output; global mute hotkey
+- [ ] Soundboard: browse public soundboards and install clips in one click (needs a clip source/provider,
+      and attention to copyright)
 - [ ] Tray, start with Windows, hotkeys, installer
 - [ ] Native engine (Rust/C++) for lower latency

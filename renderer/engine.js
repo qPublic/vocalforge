@@ -53,6 +53,10 @@ class Engine {
     this.ctx = null;
     this.values = defaults();
     this.onGate = () => {};
+    this.muted = false;
+    this.boardDb = 0;
+    this.sounds = new Map(); // decoded clips for the current context, by name
+    this.playing = new Set();
   }
 
   static async listDevices() {
@@ -104,6 +108,9 @@ class Engine {
     n.lim.ratio.value = 20;
     n.lim.attack.value = 0.001;
     n.lim.release.value = 0.08;
+    // Soundboard clips join just before the limiter, so they skip the voice processing.
+    n.board = ctx.createGain();
+    n.board.connect(n.lim);
     n.out = ctx.createGain();
     n.inMeter = ctx.createAnalyser();
     n.outMeter = ctx.createAnalyser();
@@ -183,7 +190,54 @@ class Engine {
 
     n.lim.threshold.value = v.limOn ? v.limCeil : 0;
     n.lim.ratio.value = v.limOn ? 20 : 1;
-    ramp(n.out.gain, dbToLin(v.outGain));
+    ramp(n.out.gain, this.muted ? 0 : dbToLin(v.outGain));
+    ramp(n.board.gain, dbToLin(this.boardDb));
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    this.apply();
+  }
+
+  setBoardLevel(db) {
+    this.boardDb = db;
+    this.apply();
+  }
+
+  // Plays a clip (bytes from the main process) into the output. Decoded clips are cached.
+  async playSound(name, bytes) {
+    if (!this.ctx) throw new Error('Start the mixer first');
+    let buffer = this.sounds.get(name);
+    if (!buffer) {
+      const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      buffer = await this.ctx.decodeAudioData(copy);
+      this.sounds.set(name, buffer);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(this.nodes.board);
+    src.onended = () => {
+      this.playing.delete(src);
+      src.disconnect();
+    };
+    this.playing.add(src);
+    src.start();
+  }
+
+  hasSound(name) {
+    return this.sounds.has(name);
+  }
+
+  forgetSound(name) {
+    this.sounds.delete(name);
+  }
+
+  stopSounds() {
+    for (const src of this.playing) {
+      try {
+        src.stop();
+      } catch {}
+    }
   }
 
   // Peak level in dBFS for 'in' or 'out'.
@@ -212,5 +266,7 @@ class Engine {
     this.monEl = null;
     if (this.ctx) await this.ctx.close();
     this.ctx = this.nodes = this.stream = null;
+    this.sounds.clear();
+    this.playing.clear();
   }
 }
