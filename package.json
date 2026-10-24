@@ -1,6 +1,6 @@
 {
   "name": "vocalforge",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
@@ -22,15 +22,29 @@
     "productName": "VocalForge",
     "files": [
       "main.js",
-      "renderer/**/*"
+      "renderer/**/*",
+      "build/icon.png"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "runAfterFinish": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "license": "LICENSE",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp",
+      "installerHeaderIcon": "build/icon.ico",
+      "shortcutName": "VocalForge",
+      "uninstallDisplayName": "VocalForge"
     },
     "publish": [
       {

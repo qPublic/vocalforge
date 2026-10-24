@@ -7,6 +7,7 @@ function createWindow() {
     height: 760,
     backgroundColor: '#14161a',
     title: 'VocalForge',
+    icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: { contextIsolation: true, backgroundThrottling: false },
   });
   win.setMenuBarVisibility(false);
