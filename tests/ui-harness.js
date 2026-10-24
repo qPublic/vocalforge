@@ -70,6 +70,7 @@ async function loadApp({ vf = {}, store } = {}) {
       // jsdom has no media playback or blob URLs.
       window.HTMLMediaElement.prototype.play = async function () {
         window.__played = (window.__played || 0) + 1;
+        window.__lastVolume = this.volume;
       };
       window.HTMLMediaElement.prototype.pause = function () {};
       window.URL.createObjectURL = () => 'blob:test';

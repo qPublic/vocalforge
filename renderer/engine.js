@@ -296,7 +296,7 @@ class Engine {
   }
 
   setBoardLevel(db) {
-    this.boardDb = db;
+    this.boardDb = Math.min(0, db);
     this.apply();
   }
 
