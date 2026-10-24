@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
 const path = require('path');
 
 let win;
@@ -34,8 +34,13 @@ app.on('window-all-closed', () => app.quit());
 // The new version installs when the app quits, or right away via the "Restart to update" button.
 const send = (status) => win && !win.isDestroyed() && win.webContents.send('update:status', status);
 
+// Only these sites can be opened from the UI.
+const ALLOWED_LINKS = ['https://vb-audio.com/Cable/', 'https://github.com/qPublic/vocalforge'];
+
 function setupUpdates() {
   ipcMain.handle('app:version', () => app.getVersion());
+  ipcMain.handle('app:open-external', (_e, url) => ALLOWED_LINKS.includes(url) && shell.openExternal(url));
+  ipcMain.handle('debug:devtools', () => win.webContents.toggleDevTools());
 
   if (!app.isPackaged) {
     ipcMain.handle('update:check', () => send({ state: 'dev', message: 'Updates are disabled in dev builds' }));

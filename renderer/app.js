@@ -228,10 +228,35 @@ function setupUpdates() {
   btn.addEventListener('click', () => (ready ? window.vf.installUpdate() : window.vf.checkForUpdates()));
 }
 
+// ---------- settings / debug ----------
+function setupSettings() {
+  const dlg = $('settings');
+  const note = (t) => ($('dbgNote').textContent = t);
+  $('settingsBtn').addEventListener('click', () => {
+    note('');
+    dlg.showModal();
+  });
+  $('runSetupBtn').addEventListener('click', () => {
+    dlg.close();
+    Wizard.open();
+  });
+  $('previewWizBtn').addEventListener('click', () => {
+    dlg.close();
+    Wizard.open({ preview: true });
+  });
+  $('resetFirstRunBtn').addEventListener('click', () => {
+    store.setupDone = false;
+    persist();
+    note('Done. The wizard will show on next launch.');
+  });
+  $('devtoolsBtn').addEventListener('click', () => window.vf.toggleDevTools());
+}
+
 // ---------- init ----------
 (async function init() {
   buildPanels();
   setupUpdates();
+  setupSettings();
   refreshPresets(store.last);
   if (store.last === '(custom)' || !allPresets()[store.last]) {
     if (store.custom) {
@@ -247,4 +272,5 @@ function setupUpdates() {
   }
   navigator.mediaDevices.addEventListener('devicechange', () => loadDevices().catch(() => {}));
   tick();
+  if (!store.setupDone) Wizard.open();
 })();

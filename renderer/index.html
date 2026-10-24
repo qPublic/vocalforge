@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:">
   <title>VocalForge</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="wizard.css">
 </head>
 <body>
   <header>
@@ -15,6 +16,7 @@
       <label class="chk"><input type="checkbox" id="monChk"> Monitor</label>
       <label>Monitor to <select id="monSel"></select></label>
       <button id="startBtn">Start</button>
+      <button id="settingsBtn" class="icon" title="Settings" aria-label="Settings">&#9881;</button>
     </div>
   </header>
 
@@ -43,7 +45,30 @@
     <button id="updBtn">Check for updates</button>
   </footer>
 
+  <dialog id="settings">
+    <form method="dialog">
+      <h3>Settings</h3>
+      <section>
+        <h4>Setup</h4>
+        <p>Run the guided setup again to pick your mic, output and sound.</p>
+        <button type="button" id="runSetupBtn">Run setup wizard</button>
+      </section>
+      <section>
+        <h4>Debug</h4>
+        <p>Tools for testing. Previewing the wizard doesn't change any of your settings.</p>
+        <div class="dbg">
+          <button type="button" id="previewWizBtn">Preview setup wizard</button>
+          <button type="button" id="resetFirstRunBtn">Show wizard on next launch</button>
+          <button type="button" id="devtoolsBtn">Toggle DevTools</button>
+        </div>
+        <p class="dbgNote" id="dbgNote"></p>
+      </section>
+      <menu><button value="close">Close</button></menu>
+    </form>
+  </dialog>
+
   <script src="engine.js"></script>
   <script src="app.js"></script>
+  <script src="wizard.js"></script>
 </body>
 </html>

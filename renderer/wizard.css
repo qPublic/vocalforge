@@ -1,0 +1,75 @@
+/* ---------- settings dialog ---------- */
+button.icon { padding: 5px 9px; font-size: 16px; line-height: 1; }
+dialog#settings { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(460px, 92vw); }
+dialog#settings::backdrop { background: rgba(5, 6, 8, 0.6); backdrop-filter: blur(3px); }
+dialog#settings form { padding: 18px 20px 14px; }
+dialog#settings h3 { margin: 0 0 10px; font-size: 16px; }
+dialog#settings section { padding: 12px 0; border-top: 1px solid var(--line); }
+dialog#settings h4 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); }
+dialog#settings p { margin: 0 0 10px; color: var(--dim); font-size: 13px; }
+dialog#settings .dbg { display: flex; flex-wrap: wrap; gap: 8px; }
+dialog#settings .dbgNote { margin: 8px 0 0; color: var(--good); min-height: 1em; }
+dialog#settings menu { margin: 6px 0 0; padding: 0; display: flex; justify-content: flex-end; }
+
+/* ---------- setup wizard ---------- */
+.wz-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+  background: radial-gradient(900px 500px at 50% 0%, rgba(76,194,255,.16), transparent 70%), rgba(8,9,12,.88);
+  backdrop-filter: blur(6px); animation: wzFade .22s ease; }
+.wz-backdrop.leaving { opacity: 0; transition: opacity .18s ease; }
+.wz-card { position: relative; width: min(640px, 100%); min-height: 460px; display: flex; flex-direction: column;
+  background: linear-gradient(180deg, #212631 0%, #181b21 100%); border: 1px solid #2f3541; border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02) inset; overflow: hidden; animation: wzRise .3s cubic-bezier(.2,.8,.2,1); }
+.wz-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--good)); }
+.wz-badge { position: absolute; top: 14px; left: 18px; font-size: 11px; letter-spacing: .5px; color: #ffd37a; background: rgba(255,200,90,.1); border: 1px solid rgba(255,200,90,.3); padding: 3px 9px; border-radius: 99px; }
+.wz-close { position: absolute; top: 10px; right: 12px; background: none; border: 0; color: var(--dim); font-size: 24px; line-height: 1; padding: 4px 8px; }
+.wz-close:hover { color: var(--text); }
+.wz-body { flex: 1; padding: 52px 48px 12px; display: flex; flex-direction: column; justify-content: center; }
+.wz-body.enter { animation: wzSlide .32s cubic-bezier(.2,.8,.2,1); }
+.wz-body h1 { margin: 6px 0 10px; font-size: 30px; text-align: center; letter-spacing: .3px; }
+.wz-body h2 { margin: 4px 0 8px; font-size: 24px; }
+.wz-body .lead { margin: 0 0 18px; color: var(--dim); font-size: 15px; line-height: 1.55; }
+.wz-body h1 + .lead { text-align: center; max-width: 460px; margin: 0 auto; }
+.wz-step { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); }
+.wz-logo { width: 96px; height: 96px; display: block; margin: 0 auto 10px; overflow: visible; }
+.wz-logo .bar { transform-box: fill-box; transform-origin: top; animation: wzBar 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * 90ms); }
+.wz-logo + h2 { text-align: center; }
+.wz-select { width: 100%; max-width: none; padding: 10px 12px; margin-top: 4px; }
+.wz-meter { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; margin-top: 16px; }
+.wz-meter .bar { height: 14px; border-radius: 7px; }
+.wz-meter .bar i { background: linear-gradient(90deg, var(--good), var(--accent)); transition: width 50ms linear; }
+.wz-meter b { min-width: 96px; text-align: right; font-weight: 500; color: var(--dim); }
+.wz-meter b.ok { color: var(--good); }
+.wz-note { border-radius: 10px; padding: 12px 14px; margin: 6px 0 14px; font-size: 14px; line-height: 1.5; border: 1px solid; }
+.wz-note b { display: block; margin-bottom: 2px; }
+.wz-note em { font-style: normal; color: var(--text); font-weight: 600; }
+.wz-note.good { background: rgba(70,211,154,.08); border-color: rgba(70,211,154,.35); color: #bfeedb; }
+.wz-note.good b { color: var(--good); }
+.wz-note.warn { background: rgba(255,200,90,.07); border-color: rgba(255,200,90,.35); color: #f0dcb0; }
+.wz-note.warn b { color: #ffd37a; }
+.wz-actions { display: flex; gap: 8px; margin-top: 10px; }
+.wz-field { display: block; margin: 4px 0 12px; }
+.wz-check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.wz-check small { color: var(--dim); }
+.wz-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wz-pcard { text-align: left; padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; max-width: none;
+  background: #1a1d24; border: 1px solid var(--line); transition: transform .12s, border-color .12s, background .12s; }
+.wz-pcard b { font-size: 15px; }
+.wz-pcard span { color: var(--dim); font-size: 12.5px; line-height: 1.4; }
+.wz-pcard:hover { transform: translateY(-2px); border-color: #3b4350; }
+.wz-pcard.on { border-color: var(--accent); background: rgba(76,194,255,.1); box-shadow: 0 0 0 1px var(--accent) inset; }
+.wz-summary { list-style: none; margin: 10px auto 18px; padding: 0; width: 100%; max-width: 440px; }
+.wz-summary li { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.wz-summary span { color: var(--dim); }
+.wz-summary b { font-weight: 500; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wz-foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 14px 22px 20px; }
+.wz-foot .wz-next { justify-self: end; min-width: 120px; padding: 9px 18px; background: var(--accent); color: #04202e; font-weight: 600; border: 0; }
+.wz-foot .wz-next:hover { filter: brightness(1.1); }
+.wz-foot .wz-back { justify-self: start; }
+.wz-dots { display: flex; gap: 7px; }
+.wz-dots i { width: 7px; height: 7px; border-radius: 50%; background: #333946; transition: background .2s; }
+.wz-dots i.on { background: var(--accent); }
+@keyframes wzFade { from { opacity: 0; } }
+@keyframes wzRise { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+@keyframes wzSlide { from { opacity: 0; transform: translateX(18px); } }
+@keyframes wzBar { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.62); } }
+@media (prefers-reduced-motion: reduce) { .wz-logo .bar, .wz-body.enter, .wz-card, .wz-backdrop { animation: none; } }
