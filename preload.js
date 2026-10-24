@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('vf', {
   addSounds: () => ipcRenderer.invoke('sounds:add'),
   readSound: (name) => ipcRenderer.invoke('sounds:read', name),
   removeSound: (name) => ipcRenderer.invoke('sounds:remove', name),
+  listCatalog: () => ipcRenderer.invoke('catalog:list'),
+  installPack: (id) => ipcRenderer.invoke('catalog:install', id),
   setHotkeys: (list) => ipcRenderer.invoke('hotkeys:set', list),
   onHotkey: (cb) => ipcRenderer.on('hotkey', (_e, action) => cb(action)),
   getSettings: () => ipcRenderer.invoke('settings:get'),

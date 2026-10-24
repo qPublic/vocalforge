@@ -1,8 +1,9 @@
-const { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, session, shell, Tray } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, session, shell, Tray } = require('electron');
 const path = require('path');
 const sounds = require('./lib/sounds');
 const hotkeys = require('./lib/hotkeys');
 const appSettings = require('./lib/settings');
+const catalog = require('./lib/catalog');
 
 let win;
 let tray;
@@ -123,6 +124,33 @@ function setupSoundboard() {
       filters: [{ name: 'Audio', extensions: [...sounds.EXTENSIONS].map((e) => e.slice(1)) }],
     });
     return canceled ? { added: [], skipped: [] } : sounds.add(soundsDir(), filePaths);
+  });
+
+  // Curated catalog of sound packs (see lib/catalog.js). The renderer only names a pack id;
+  // URLs always come from the validated catalog, never from the renderer.
+  const fetchChecked = async (url, ms) => {
+    const res = await net.fetch(url, { signal: AbortSignal.timeout(ms) });
+    // A redirect must not lead outside the allowed hosts.
+    if (!catalog.ALLOWED_HOSTS.has(new URL(res.url || url).hostname)) throw new Error('unexpected redirect');
+    return res;
+  };
+  const loadCatalog = async () => {
+    const res = await fetchChecked(catalog.CATALOG_URL, 10000);
+    if (!res.ok) throw new Error('Catalog unavailable (HTTP ' + res.status + ')');
+    const body = await res.text();
+    if (body.length > catalog.MAX_CATALOG_BYTES) throw new Error('Catalog is too large');
+    return catalog.validate(JSON.parse(body));
+  };
+  ipcMain.handle('catalog:list', async () => {
+    const have = new Set(sounds.list(soundsDir()).map((s) => s.name));
+    const { packs } = await loadCatalog();
+    return packs.map((p) => ({ id: p.id, name: p.name, author: p.author, license: p.license, description: p.description, clips: p.clips.map((c) => c.name), installed: p.clips.every((c) => have.has(c.name)) }));
+  });
+  ipcMain.handle('catalog:install', async (_e, packId) => {
+    const { packs } = await loadCatalog();
+    const pack = packs.find((p) => p.id === packId);
+    if (!pack) throw new Error('Pack not found');
+    return catalog.installPack(soundsDir(), pack, (url) => fetchChecked(url, 30000));
   });
 
   // The renderer owns the hotkey map; each call replaces every registration.

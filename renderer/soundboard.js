@@ -77,6 +77,7 @@ const Soundboard = (() => {
       else if (added.length) say(`Added ${added.length} sound${added.length > 1 ? 's' : ''}.`);
       render();
     });
+    $('boardBrowse').addEventListener('click', () => Catalog.open());
     $('boardStop').addEventListener('click', () => engine.stopSounds());
 
     Hotkeys.onPrefix('sound:', play);

@@ -40,7 +40,6 @@ Builds are unsigned, so Windows SmartScreen will warn on first run ("More info" 
 - [x] Auto-tune wizard (listens to your room and voice, suggests gate/EQ/de-esser/compressor)
 - [x] In-app setup wizard (Settings > Debug previews it)
 - [x] Local soundboard with global hotkeys, played into the mic output; global mute hotkey
-- [ ] Soundboard: browse public soundboards and install clips in one click (needs a clip source/provider,
-      and attention to copyright)
+- [x] Sound pack catalog: browse curated, license-declared packs and install them in one click (`catalog/index.json`)
 - [x] Tray, launch at startup, close to tray, hotkeys
 - [ ] Native engine (Rust/C++) for lower latency

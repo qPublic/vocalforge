@@ -35,3 +35,14 @@
 
 .board.desk .boardEmpty { margin-top: 8px; }
 .board.desk input[type=range] { width: 140px; }
+
+/* ---------- sound pack browser ---------- */
+.cat-card { min-height: 320px; }
+.cat-list { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow: auto; margin-top: 8px; }
+.cat-pack { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; background: #14171c; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.cat-pack b { font-size: 15px; }
+.cat-pack small { color: var(--dim); grid-column: 1; }
+.cat-pack .cat-clips { color: var(--dim); font-size: 12px; grid-column: 1 / -1; }
+.cat-pack button { grid-row: 1 / span 2; grid-column: 2; }
+.cat-msg { color: var(--dim); }
+.cat-msg.error { color: var(--hot); }

@@ -1,0 +1,19 @@
+{
+  "packs": [
+    {
+      "id": "vocalforge-starter",
+      "name": "VocalForge starter pack",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Original synthesized sound effects, free for any use.",
+      "clips": [
+        { "name": "ding.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/ding.wav" },
+        { "name": "buzzer.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/buzzer.wav" },
+        { "name": "coin.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/coin.wav" },
+        { "name": "level-up.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/level-up.wav" },
+        { "name": "sad-descent.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/sad-descent.wav" },
+        { "name": "whoosh.wav", "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/whoosh.wav" }
+      ]
+    }
+  ]
+}
