@@ -4,10 +4,40 @@
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
-    "start": "node scripts/start.js"
+    "start": "node scripts/start.js",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
   },
   "license": "MIT",
   "devDependencies": {
-    "electron": "^45.0.0"
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "author": "benfe",
+  "build": {
+    "appId": "com.vocalforge.app",
+    "productName": "VocalForge",
+    "files": [
+      "main.js",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "qPublic",
+        "repo": "vocalforge"
+      }
+    ]
   }
 }

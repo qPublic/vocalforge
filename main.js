@@ -18,6 +18,15 @@ app.whenReady().then(() => {
     cb(permission === 'media');
   });
   createWindow();
+  if (app.isPackaged) checkForUpdates();
 });
+
+// Updates come from GitHub Releases; the new version installs when the app quits.
+function checkForUpdates() {
+  const { autoUpdater } = require('electron-updater');
+  autoUpdater.on('error', (err) => console.error('update check failed:', err.message));
+  autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 4 * 60 * 60 * 1000);
+}
 
 app.on('window-all-closed', () => app.quit());
