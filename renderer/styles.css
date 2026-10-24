@@ -64,3 +64,10 @@ button:disabled { opacity: 0.5; cursor: default; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .toggle { accent-color: var(--good); width: 18px; height: 18px; }
 .hint { color: var(--dim); font-size: 12px; margin-top: 18px; }
+
+footer { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12px; }
+footer b { color: var(--text); font-weight: 500; }
+footer #updMsg { flex: 1; }
+footer #updMsg.error { color: var(--hot); }
+footer #updMsg.ok { color: var(--good); }
+footer button { padding: 4px 10px; font-size: 12px; }

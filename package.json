@@ -1,6 +1,6 @@
 {
   "name": "vocalforge",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
@@ -22,6 +22,7 @@
     "productName": "VocalForge",
     "files": [
       "main.js",
+      "preload.js",
       "renderer/**/*",
       "build/icon.png"
     ],

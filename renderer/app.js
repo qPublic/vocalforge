@@ -212,9 +212,26 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
+// ---------- version / updates ----------
+function setupUpdates() {
+  const btn = $('updBtn');
+  const msg = $('updMsg');
+  let ready = false;
+  window.vf.getVersion().then((v) => ($('ver').textContent = 'v' + v));
+  window.vf.onUpdateStatus((s) => {
+    msg.textContent = s.message;
+    msg.className = s.state === 'error' ? 'error' : s.state === 'current' || s.state === 'ready' ? 'ok' : '';
+    ready = s.state === 'ready';
+    btn.textContent = ready ? 'Restart to update' : 'Check for updates';
+    btn.disabled = s.state === 'checking' || s.state === 'downloading';
+  });
+  btn.addEventListener('click', () => (ready ? window.vf.installUpdate() : window.vf.checkForUpdates()));
+}
+
 // ---------- init ----------
 (async function init() {
   buildPanels();
+  setupUpdates();
   refreshPresets(store.last);
   if (store.last === '(custom)' || !allPresets()[store.last]) {
     if (store.custom) {
