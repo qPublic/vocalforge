@@ -68,14 +68,22 @@ class Engine {
   }
 
   static async listDevices() {
+    let all = await navigator.mediaDevices.enumerateDevices();
     // Labels are empty until permission is granted once.
-    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
-    tmp.getTracks().forEach((t) => t.stop());
-    const all = await navigator.mediaDevices.enumerateDevices();
+    if (all.some((d) => d.kind === 'audioinput' && !d.label)) {
+      const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+      tmp.getTracks().forEach((t) => t.stop());
+      all = await navigator.mediaDevices.enumerateDevices();
+    }
     return {
       inputs: all.filter((d) => d.kind === 'audioinput'),
       outputs: all.filter((d) => d.kind === 'audiooutput'),
     };
+  }
+
+  // Switch the output device without restarting the mixer.
+  async setOutput(deviceId) {
+    if (this.ctx && this.ctx.setSinkId) await this.ctx.setSinkId(deviceId === 'default' ? '' : deviceId);
   }
 
   async start({ inputId, outputId, monitorId, monitor }) {

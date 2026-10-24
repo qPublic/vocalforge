@@ -55,3 +55,13 @@ test('main process handles every IPC channel the preload invokes', () => {
     assert.ok(main.includes(`'${m[1]}'`), `main.js has no handler for ${m[1]}`);
   }
 });
+
+test('device dropdowns react to changes while the mixer is running', () => {
+  const app = read('app.js');
+  for (const id of ['inSel', 'outSel', 'monSel', 'monChk']) {
+    assert.ok(app.includes(`['${id}',`), `${id} has no change handler`);
+  }
+  assert.ok(app.includes("addEventListener('change', () => onDeviceChange(which))"));
+  // Rebuilding the lists must not throw away the user's current pick.
+  assert.ok(app.includes('const current = sel.value'));
+});

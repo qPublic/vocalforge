@@ -145,9 +145,12 @@ $('autoBtn').addEventListener('click', () => AutoTune.open());
 
 // ---------- devices / transport ----------
 function fillSelect(sel, devices, saved) {
+  const current = sel.value; // keep what the user has picked if it is still plugged in
   sel.innerHTML = '';
   for (const d of devices) sel.add(new Option(d.label || d.deviceId, d.deviceId));
-  if (saved && [...sel.options].some((o) => o.value === saved)) sel.value = saved;
+  const has = (v) => v && [...sel.options].some((o) => o.value === v);
+  if (has(current)) sel.value = current;
+  else if (has(saved)) sel.value = saved;
   // Prefer a VB-Cable output when present and nothing was saved.
   else if (sel.id === 'outSel') {
     const cable = devices.find((d) => /cable input/i.test(d.label));
@@ -197,6 +200,32 @@ async function toggle() {
   btn.disabled = false;
 }
 $('startBtn').addEventListener('click', toggle);
+
+// Changing a device while the mixer is running takes effect immediately.
+let switching = Promise.resolve();
+function onDeviceChange(which) {
+  store.devices = {
+    in: $('inSel').value,
+    out: $('outSel').value,
+    mon: $('monSel').value,
+    monitor: $('monChk').checked,
+  };
+  persist();
+  if (!running) return;
+  // Queue changes so rapid clicks cannot overlap a stop/start.
+  switching = switching.then(async () => {
+    try {
+      if (which === 'out') return await engine.setOutput(store.devices.out);
+      await toggle(); // stop
+      await toggle(); // start with the new devices
+    } catch (err) {
+      toast('Could not switch device: ' + err.message, true);
+    }
+  });
+}
+for (const [id, which] of [['inSel', 'in'], ['outSel', 'out'], ['monSel', 'mon'], ['monChk', 'monitor']]) {
+  $(id).addEventListener('change', () => onDeviceChange(which));
+}
 
 // ---------- meters ----------
 engine.onGate = (g) => {
@@ -295,13 +324,21 @@ function setupSettings() {
 
 // ---------- init ----------
 (async function init() {
-  buildPanels();
-  setupUpdates();
-  setupSettings();
-  setupMute();
-  setupGeneral();
-  Soundboard.init();
-  Desktop.init();
+  const safely = (name, fn) => {
+    try {
+      return fn();
+    } catch (err) {
+      console.error(name + ' failed', err);
+      toast(name + ' failed to start: ' + err.message, true);
+    }
+  };
+  safely('Panels', buildPanels);
+  safely('Updates', setupUpdates);
+  safely('Settings', setupSettings);
+  safely('Mute', setupMute);
+  safely('General options', setupGeneral);
+  safely('Soundboard', () => Soundboard.init());
+  safely('Desktop audio', () => Desktop.init());
   refreshPresets(store.last);
   if (store.last === '(custom)' || !allPresets()[store.last]) {
     if (store.custom) {
@@ -313,10 +350,10 @@ function setupSettings() {
   try {
     await loadDevices();
   } catch (err) {
-    alert('Could not access microphone: ' + err.message);
+    toast('Could not access the microphone: ' + err.message, true);
   }
   navigator.mediaDevices.addEventListener('devicechange', () => loadDevices().catch(() => {}));
   tick();
-  if (!store.setupDone) Wizard.open();
+  if (!store.setupDone) safely('Setup wizard', () => Wizard.open());
   else if (store.autoStartMixer && !running) toggle();
 })();
