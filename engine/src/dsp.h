@@ -323,6 +323,7 @@ class Chain {
     first_ = false;
   }
   void setMuted(bool m) { muted_ = m; }
+  void setBypass(bool b) { bypass_ = b; }
   // While the delay test runs, its click must pass untouched: RNNoise would remove it as noise, and a closed
   // gate or a muted output would hide it. None of these stages adds delay of its own (RNNoise's 10 ms is added back).
   void setMeasuring(bool b) { measuring_ = b; }
@@ -351,16 +352,21 @@ class Chain {
   }
 
   void block_(const float* in, float* out, int n, const float* extra) {
+    // Bypass (the A/B comparison): every voice stage is off, so only input gain, the limiter and output gain remain.
+    Params tp = target_;
+    if (bypass_.load(std::memory_order_relaxed)) {
+      tp.hpfOn = tp.nsOn = tp.gateOn = tp.eqOn = tp.deessOn = tp.compOn = tp.clarityOn = tp.lofiOn = false;
+    }
     const double glide = 1 - std::exp(-(double)n / (kRate * 0.015));
     const bool silent = muted_ && !measuring_.load(std::memory_order_relaxed);
-    const double tInG = dbToLin(target_.inGain), tOutG = silent ? 0 : dbToLin(target_.outGain);
+    const double tInG = dbToLin(tp.inGain), tOutG = silent ? 0 : dbToLin(tp.outGain);
     inG_ += (tInG - inG_) * glide;
     outG_ += (tOutG - outG_) * glide;
-    const double tEq[4] = {target_.eqOn ? target_.eqLow : 0, target_.eqOn ? target_.eqMud : 0,
-                           target_.eqOn ? target_.eqPres : 0, target_.eqOn ? target_.eqAir : 0};
+    const double tEq[4] = {tp.eqOn ? tp.eqLow : 0, tp.eqOn ? tp.eqMud : 0,
+                           tp.eqOn ? tp.eqPres : 0, tp.eqOn ? tp.eqAir : 0};
     for (int i = 0; i < 4; i++) eq_[i] += (tEq[i] - eq_[i]) * glide;
-    hpf_ += ((target_.hpfOn ? target_.hpfFreq : 10) - hpf_) * glide;
-    cur_ = target_;  // non-glided stages read the target directly
+    hpf_ += ((tp.hpfOn ? tp.hpfFreq : 10) - hpf_) * glide;
+    cur_ = tp;  // non-glided stages read the target directly
 
     hp_.highpass(hpf_, 0.707);
     low_.lowShelf(120, eq_[0]);
@@ -405,7 +411,7 @@ class Chain {
 
   Params target_, cur_;
   bool first_ = true, muted_ = false;
-  std::atomic<bool> measuring_{false};
+  std::atomic<bool> measuring_{false}, bypass_{false};
   double inG_ = 1, outG_ = 1, hpf_ = 80, eq_[4] = {0, 0, 0, 0};
   Biquad hp_, low_, mud_, pres_, air_;
   Denoise dn_;

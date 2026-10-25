@@ -443,6 +443,7 @@ class Engine {
     dirty_ = true;
   }
   void setMuted(bool m) { muted_ = m; }
+  void setBypass(bool b) { bypass_ = b; }
   void setBoardDb(double db) { boardLin_ = (float)dbToLin(std::min(0.0, std::max(-60.0, db))); }
   void setDesktopDb(double db) { deskLin_ = (float)dbToLin(std::min(6.0, std::max(-60.0, db))); }
   void stopSounds() { clearVoices_ = true; }
@@ -650,6 +651,7 @@ class Engine {
       paramsMutex_.unlock();
     }
     chain_.setMuted(muted_);
+    chain_.setBypass(bypass_);
     if (clearVoices_.exchange(false)) voices_.clear();
     if (voiceMutex_.try_lock()) {
       for (auto& v : pendingVoices_) {
@@ -725,7 +727,7 @@ class Engine {
   ma_uint32 frames_ = 240;
   ma_device_id outputId_{};
   bool outputIsDefault_ = true;
-  std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, clearVoices_{false};
+  std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, bypass_{false}, clearVoices_{false};
   std::atomic<float> boardLin_{0.2512f}, deskLin_{0.5f};
   json detail_;  // what the devices actually negotiated, for diagnostics
   std::atomic<float> latencyMs_{0};
@@ -764,6 +766,7 @@ int runOffline(const std::string& inPath, const std::string& outPath, const std:
   if (!x.empty()) memcpy(x.data(), raw.data(), x.size() * sizeof(float));
 
   Params p;
+  bool bypass = false;
   if (!paramsPath.empty()) {
     std::ifstream pf(paramsPath);
     json j = json::parse(pf, nullptr, false);
@@ -771,9 +774,12 @@ int runOffline(const std::string& inPath, const std::string& outPath, const std:
       fprintf(stderr, "bad params json\n");
       return 2;
     }
-    applyValues(p, j.contains("values") ? j["values"] : j);
+    const json& vals = j.contains("values") ? j["values"] : j;
+    applyValues(p, vals);
+    bypass = vals.is_object() && vals.value("bypass", false);  // the A/B comparison, for tests
   }
   Chain chain;
+  chain.setBypass(bypass);
   chain.setParams(p, true);
   std::vector<float> y(x.size());
   for (size_t off = 0; off < x.size(); off += 128) chain.process(x.data() + off, y.data() + off, (int)std::min<size_t>(128, x.size() - off));
@@ -810,6 +816,8 @@ void handle(Engine& engine, const json& j, bool& quit) {
   } else if (cmd == "set") {
     engine.setValues(j.value("values", json::object()));
     if (!id.is_null()) reply({{"event", "ok"}});
+  } else if (cmd == "bypass") {
+    engine.setBypass(j.value("on", false));
   } else if (cmd == "mute") {
     engine.setMuted(j.value("on", false));
   } else if (cmd == "boardLevel") {

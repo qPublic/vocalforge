@@ -254,3 +254,15 @@ test('native mode: after measuring, the header shows the measured delay until no
   assert.doesNotMatch($('lat').textContent, /measured/);
   window.close();
 });
+
+test('native mode: Hear raw switches every effect off in the engine and back', async () => {
+  const { window, engineLog } = await loadApp({ native: true, store: SKIP_WIZARD });
+  const raw = window.document.getElementById('rawBtn');
+  raw.click();
+  assert.deepEqual({ ...cmds(engineLog, 'bypass').pop() }, { cmd: 'bypass', on: true });
+  assert.ok(raw.classList.contains('on'));
+  raw.click();
+  assert.deepEqual({ ...cmds(engineLog, 'bypass').pop() }, { cmd: 'bypass', on: false });
+  assert.ok(!raw.classList.contains('on'));
+  window.close();
+});

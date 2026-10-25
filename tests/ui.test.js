@@ -480,3 +480,15 @@ test('Settings closes when you click outside it, but not inside it or when a dra
   assert.deepEqual(errors, []);
   window.close();
 });
+
+test('Hear raw is a toggle in the web engine too, and has its own hotkey slot', async () => {
+  const { window, errors } = await loadApp({ store: SKIP_WIZARD });
+  const raw = window.document.getElementById('rawBtn');
+  raw.click();
+  assert.equal(raw.textContent, 'Raw mic');
+  raw.click();
+  assert.equal(raw.textContent, 'Hear raw');
+  assert.ok(window.document.querySelector('#rawChip .chip'), 'hotkey chip is there');
+  assert.deepEqual(errors, []);
+  window.close();
+});

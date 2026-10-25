@@ -48,6 +48,8 @@ test('levels, mute, desktop and output are checked and clamped', () => {
   assert.equal(clean({ cmd: 'boardLevel' }), null);
   assert.deepEqual(clean({ cmd: 'mute', on: 'true' }), { cmd: 'mute', on: false }, 'only a real boolean turns it on');
   assert.deepEqual(clean({ cmd: 'mute', on: true }), { cmd: 'mute', on: true });
+  assert.deepEqual(clean({ cmd: 'bypass', on: true }), { cmd: 'bypass', on: true });
+  assert.deepEqual(clean({ cmd: 'bypass', on: 1 }), { cmd: 'bypass', on: false });
   assert.deepEqual(clean({ cmd: 'desktop', on: true, db: -6 }), { cmd: 'desktop', on: true, db: -6 });
   assert.equal(clean({ cmd: 'desktop', on: true, db: Infinity }), null);
   assert.deepEqual(clean({ cmd: 'output', device: 'default' }), { cmd: 'output', device: 'default' });

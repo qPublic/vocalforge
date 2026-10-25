@@ -352,6 +352,23 @@ function setupUpdates() {
   btn.addEventListener('click', () => (ready ? window.vf.installUpdate() : window.vf.checkForUpdates()));
 }
 
+// ---------- hear the difference ----------
+// "Hear raw" switches every effect off (input gain and limiter stay) so you can compare with your processed voice.
+let raw = false;
+function setRaw(on) {
+  raw = on;
+  engine.setBypass(on);
+  $('rawBtn').classList.toggle('on', on);
+  $('rawBtn').textContent = on ? 'Raw mic' : 'Hear raw';
+  $('rawBtn').title = on ? 'Effects are off. Click to hear your processed voice again' : 'Hear your raw mic, without any effects, to compare';
+}
+
+function setupRaw() {
+  $('rawBtn').addEventListener('click', () => setRaw(!raw));
+  Hotkeys.onAction('raw', () => setRaw(!raw));
+  $('rawChip').append(Hotkeys.chip('raw'));
+}
+
 // ---------- mute ----------
 let muted = false;
 function setMuted(m) {
@@ -488,6 +505,7 @@ async function init() {
   safely('Updates', setupUpdates);
   safely('Settings', setupSettings);
   safely('Mute', setupMute);
+  safely('Raw', setupRaw);
   safely('General options', setupGeneral);
   safely('Soundboard', () => Soundboard.init());
   safely('Desktop audio', () => Desktop.init());

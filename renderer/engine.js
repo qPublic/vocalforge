@@ -72,6 +72,7 @@ class Engine {
     this.onError = () => {};
     this.onDesktopFailed = () => {};
     this.muted = false;
+    this.bypass = false;
     this.reductionDb = 0;
     this.desktopOn = false;
     this.desktopDb = -6;
@@ -216,7 +217,10 @@ class Engine {
   apply() {
     const n = this.nodes;
     if (!n) return;
-    const v = this.values;
+    // A/B comparison: while bypassed, every voice stage is off and only the input gain and limiter act.
+    const v = this.bypass
+      ? { ...this.values, hpfOn: false, nsOn: false, gateOn: false, eqOn: false, deessOn: false, compOn: false, clarityOn: false, lofiOn: false }
+      : this.values;
     const t = this.ctx.currentTime;
     const ramp = (p, x) => p.setTargetAtTime(x, t, 0.015);
 
@@ -271,6 +275,11 @@ class Engine {
     ramp(n.out.gain, this.muted ? 0 : dbToLin(v.outGain));
     ramp(n.board.gain, dbToLin(this.boardDb));
     ramp(n.desktop.gain, dbToLin(this.desktopDb));
+  }
+
+  setBypass(on) {
+    this.bypass = on;
+    this.apply();
   }
 
   setMuted(muted) {

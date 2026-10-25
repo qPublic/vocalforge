@@ -10,6 +10,7 @@ class NativeEngine {
     this.isNative = true;
     this.values = defaults();
     this.muted = false;
+    this.bypass = false;
     this.desktopOn = false;
     this.desktopDb = -6;
     this.boardDb = 0;
@@ -109,6 +110,7 @@ class NativeEngine {
     this.running = true;
     this.apply();
     this._send({ cmd: 'mute', on: this.muted });
+    this._send({ cmd: 'bypass', on: this.bypass });
     this._send({ cmd: 'boardLevel', db: this.boardDb });
     if (this.desktopOn) await this.setDesktop(true);
   }
@@ -153,6 +155,12 @@ class NativeEngine {
 
   get latencyMeasured() {
     return this.measuredMs != null;
+  }
+
+  // A/B comparison: while on, only the input gain and limiter act on the mic.
+  setBypass(on) {
+    this.bypass = on;
+    this._send({ cmd: 'bypass', on });
   }
 
   setMuted(m) {

@@ -297,3 +297,12 @@ test('protocol: measure needs a running mixer and a real device', opts, async ()
   assert.match((await e.waitFor((x) => x.id === 3)).message, /real audio device/, 'the null backend has no loopback to listen to');
   assert.equal(await e.close(), 0);
 });
+
+test('native chain: bypass leaves only input gain and the limiter (the A/B comparison)', opts, () => {
+  // A quiet 120 Hz hum that the default chain would cut (high-pass, gate) must pass through when bypassed.
+  const input = new Float32Array(48000).map((_, i) => 0.01 * Math.sin((2 * Math.PI * 120 * i) / 48000));
+  const processed = nativeProcess(input, {});
+  const bypassed = nativeProcess(input, { bypass: true });
+  assert.ok(db(rms(processed, 9600)) < db(rms(input, 9600)) - 3 || db(rms(processed, 9600)) > db(rms(input, 9600)) + 3, 'the default chain changes this signal');
+  assert.ok(Math.abs(db(rms(bypassed, 9600)) - db(rms(input, 9600))) < 0.5, 'bypass leaves it alone');
+});
