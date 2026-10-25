@@ -5,3 +5,7 @@ out/
 *.log
 .DS_Store
 engine/build/
+
+# driver build inputs/outputs
+driver/third_party/
+driver/build/

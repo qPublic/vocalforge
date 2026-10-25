@@ -19,16 +19,16 @@ function pageHtml() {
     });
 }
 
-function fakeDevices() {
+function fakeDevices(noCable) {
   return [
     { kind: 'audioinput', deviceId: 'mic1', label: 'Test Mic' },
     { kind: 'audiooutput', deviceId: 'out1', label: 'Test Speakers' },
     { kind: 'audiooutput', deviceId: 'cable', label: 'CABLE Input (VB-Audio Virtual Cable)' },
-  ];
+  ].filter((d) => !(noCable && d.deviceId === 'cable'));
 }
 
 // Returns { dom, window, errors, calls, settle }. `vf` overrides parts of the fake window.vf bridge.
-async function loadApp({ vf = {}, store, native = false, engineAvailable = native } = {}) {
+async function loadApp({ vf = {}, store, native = false, engineAvailable = native, noCable = false } = {}) {
   const errors = [];
   const calls = [];
   const vc = new VirtualConsole();
@@ -46,7 +46,7 @@ async function loadApp({ vf = {}, store, native = false, engineAvailable = nativ
     onUpdateStatus: () => {},
     openExternal: record('openExternal', async () => true),
     toggleDevTools: record('toggleDevTools', async () => {}),
-    getSettings: record('getSettings', async () => ({ launchAtLogin: false, closeToTray: false })),
+    getSettings: record('getSettings', async () => ({ launchAtLogin: false, closeToTray: false, gameOnlyHotkeys: false, gameNeedsHiddenCursor: true, gameList: ['VALORANT-Win64-Shipping.exe'] })),
     setSettings: record('setSettings', async (p) => p),
     listSounds: record('listSounds', async () => []),
     addSounds: record('addSounds', async () => ({ added: [], skipped: [] })),
@@ -104,7 +104,7 @@ async function loadApp({ vf = {}, store, native = false, engineAvailable = nativ
       window.HTMLDialogElement.prototype.close ||= function () { this.open = false; };
       Object.defineProperty(window.navigator, 'mediaDevices', {
         value: {
-          enumerateDevices: async () => fakeDevices(),
+          enumerateDevices: async () => fakeDevices(noCable),
           getUserMedia: async () => ({ getTracks: () => [] }),
           addEventListener() {},
         },

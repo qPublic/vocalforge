@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 const sounds = require('./lib/sounds');
 const hotkeys = require('./lib/hotkeys');
 const appSettings = require('./lib/settings');
+const foreground = require('./lib/foreground');
 const catalog = require('./lib/catalog');
 
 let win;
@@ -93,6 +94,7 @@ if (!app.requestSingleInstanceLock()) {
     createWindow();
     createTray();
     applySettings();
+    syncGameWatch();
     setupSoundboard();
     setupUpdates();
   });
@@ -101,6 +103,7 @@ if (!app.requestSingleInstanceLock()) {
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', () => (quitting = true));
 app.on('will-quit', () => {
+  if (gameWatch) gameWatch.stop();
   globalShortcut.unregisterAll();
   if (engineProc) engineProc.kill();
 });
@@ -112,6 +115,7 @@ function setupSettings() {
   ipcMain.handle('settings:set', (_e, patch) => {
     settings = appSettings.save(file, { ...settings, ...patch });
     applySettings();
+    syncGameWatch();
     return settings;
   });
 }
@@ -226,15 +230,50 @@ function setupSoundboard() {
 
   // The renderer owns the hotkey map; each call replaces every registration.
   ipcMain.handle('hotkeys:set', (_e, list) => {
-    globalShortcut.unregisterAll();
-    return hotkeys.sanitize(list).map(({ accelerator, action }) => {
-      let ok = false;
-      try {
-        ok = globalShortcut.register(accelerator, () => win && !win.isDestroyed() && win.webContents.send('hotkey', action));
-      } catch {}
-      return { accelerator, action, ok };
-    });
+    wantedHotkeys = hotkeys.sanitize(list);
+    return registerHotkeys();
   });
+}
+
+// ---------- game-only hotkeys ----------
+// A registered global shortcut swallows the key for every program. With "game only" on, shortcuts are
+// registered only while a listed game has focus, so typing in a browser or chat is never affected.
+let wantedHotkeys = [];
+let focusedProgram = '';
+let cursorHidden = false;
+let gameWatch = null;
+
+const hotkeysActive = () =>
+  !settings.gameOnlyHotkeys || (foreground.isGame(focusedProgram, settings.gameList) && (!settings.gameNeedsHiddenCursor || cursorHidden));
+
+function registerHotkeys() {
+  globalShortcut.unregisterAll();
+  const active = hotkeysActive();
+  return wantedHotkeys.map(({ accelerator, action }) => {
+    if (!active) return { accelerator, action, ok: true };
+    let ok = false;
+    try {
+      ok = globalShortcut.register(accelerator, () => win && !win.isDestroyed() && win.webContents.send('hotkey', action));
+    } catch {}
+    return { accelerator, action, ok };
+  });
+}
+
+function syncGameWatch() {
+  if (settings.gameOnlyHotkeys && !gameWatch) {
+    gameWatch = foreground.watch((state) => {
+      const before = hotkeysActive();
+      focusedProgram = state.name;
+      cursorHidden = state.cursorHidden;
+      if (hotkeysActive() !== before) registerHotkeys();
+    });
+  } else if (!settings.gameOnlyHotkeys && gameWatch) {
+    gameWatch.stop();
+    gameWatch = null;
+    focusedProgram = '';
+    cursorHidden = false;
+  }
+  registerHotkeys();
 }
 
 // ---------- updates (GitHub Releases) ----------

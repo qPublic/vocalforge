@@ -179,12 +179,27 @@ function fillSelect(sel, devices, saved) {
   }
 }
 
+// Other apps can only hear VocalForge through a virtual cable, so say whether one is installed.
+function updateCableHint(outputs) {
+  const hint = $('cableHint');
+  if (outputs.some((d) => /cable input/i.test(d.label))) {
+    hint.textContent = 'Tip: set Output to CABLE Input (VB-Cable), then pick CABLE Output as your microphone in Discord/OBS. Use headphones when monitoring to avoid feedback.';
+    return;
+  }
+  hint.textContent = 'No virtual cable found. Discord, OBS and games cannot hear VocalForge without one. VB-Cable is free. After installing it, restart the app if it does not show up here. ';
+  const get = document.createElement('button');
+  get.textContent = 'Get VB-Cable';
+  get.addEventListener('click', () => window.vf.openExternal('https://vb-audio.com/Cable/'));
+  hint.append(get);
+}
+
 async function loadDevices() {
   const { inputs, outputs } = await engine.listDevices();
   fillSelect($('inSel'), inputs, store.devices.in);
   fillSelect($('outSel'), outputs, store.devices.out);
   fillSelect($('monSel'), outputs, store.devices.mon);
   $('monChk').checked = !!store.devices.monitor;
+  updateCableHint(outputs);
 }
 
 let running = false;
@@ -334,6 +349,21 @@ async function setupGeneral() {
     store.nativeBuffer = Number(e.target.value);
     persist();
     $('nativeNote').textContent = running ? 'Press Stop then Start to apply the new buffer size.' : '';
+  });
+  $('optGameOnly').checked = !!cfg.gameOnlyHotkeys;
+  $('gameList').value = (cfg.gameList || []).join('\n');
+  $('optGameCursor').checked = cfg.gameNeedsHiddenCursor !== false;
+  $('gameListRow').hidden = $('gameCursorRow').hidden = !cfg.gameOnlyHotkeys;
+  $('optGameCursor').addEventListener('change', (e) => window.vf.setSettings({ gameNeedsHiddenCursor: e.target.checked }));
+  $('optGameOnly').addEventListener('change', (e) => {
+    $('gameListRow').hidden = $('gameCursorRow').hidden = !e.target.checked;
+    window.vf.setSettings({ gameOnlyHotkeys: e.target.checked });
+  });
+  $('gameList').addEventListener('change', async (e) => {
+    const lines = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const saved = await window.vf.setSettings({ gameList: lines });
+    if (saved && saved.gameList) e.target.value = saved.gameList.join('\n');
+    $('gameListNote').textContent = saved && saved.gameList && saved.gameList.length < lines.length ? 'Some lines were ignored: use names like VALORANT-Win64-Shipping.exe.' : '';
   });
   $('optLaunch').addEventListener('change', (e) => window.vf.setSettings({ launchAtLogin: e.target.checked }));
   $('optTray').addEventListener('change', (e) => window.vf.setSettings({ closeToTray: e.target.checked }));

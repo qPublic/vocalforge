@@ -51,3 +51,8 @@
 
 .padPlay.hit { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(76, 194, 255, .45) inset; }
 .padPrev { padding: 2px 7px; font-size: 12px; }
+
+#gameListRow { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+#gameListRow[hidden] { display: none; }
+#gameList { width: 100%; box-sizing: border-box; background: #14171c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-family: Consolas, monospace; font-size: 12px; resize: vertical; }
+#gameListNote { color: #e6a23c; }

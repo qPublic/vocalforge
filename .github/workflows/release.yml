@@ -20,8 +20,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      # Create the release up front: electron-builder uploads files in parallel and can
-      # otherwise race to create duplicate releases. Tags with a hyphen are pre-releases.
+      # Create the release up front as a draft: electron-builder uploads files in parallel and can
+      # otherwise race to create duplicate releases, and a draft is invisible to the updater, so nobody
+      # sees a release before all its files are there. Tags with a hyphen are pre-releases.
       - name: Create release
         shell: bash
         env:
@@ -29,7 +30,18 @@ jobs:
         run: |
           flag=""
           case "$GITHUB_REF_NAME" in *-*) flag="--prerelease";; esac
-          gh release create "$GITHUB_REF_NAME" $flag --title "$GITHUB_REF_NAME" --generate-notes || true
+          gh release create "$GITHUB_REF_NAME" --draft $flag --title "$GITHUB_REF_NAME" --generate-notes || true
       - run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Publish only once the update manifest and installer are attached.
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          assets=$(gh release view "$GITHUB_REF_NAME" --json assets -q '.[][].name')
+          echo "$assets"
+          echo "$assets" | grep -qx 'latest.yml'
+          echo "$assets" | grep -q 'Setup.*\.exe$'
+          gh release edit "$GITHUB_REF_NAME" --draft=false

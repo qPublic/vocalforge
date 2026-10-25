@@ -531,7 +531,7 @@ class Engine {
   ma_device_id outputId_{};
   bool outputIsDefault_ = true;
   std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, clearVoices_{false};
-  std::atomic<float> boardLin_{1.0f}, deskLin_{0.5f};
+  std::atomic<float> boardLin_{0.2512f}, deskLin_{0.5f};
   std::atomic<float> latencyMs_{0};
   bool primed_ = false;
   std::atomic<uint32_t> underruns_{0}, overruns_{0};
@@ -616,7 +616,7 @@ void handle(Engine& engine, const json& j, bool& quit) {
   } else if (cmd == "mute") {
     engine.setMuted(j.value("on", false));
   } else if (cmd == "boardLevel") {
-    engine.setBoardDb(j.value("db", 0.0));
+    engine.setBoardDb(j.value("db", -12.0));
   } else if (cmd == "desktopLevel") {
     engine.setDesktopDb(j.value("db", -6.0));
   } else if (cmd == "desktop") {

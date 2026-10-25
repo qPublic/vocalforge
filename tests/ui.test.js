@@ -210,3 +210,60 @@ test('volume: the mixer path is capped at 0 dB too', async () => {
   assert.equal(window.engine.boardDb, 0);
   window.close();
 });
+
+test('volume: missing, junk or out-of-range saved levels are repaired', async () => {
+  const cases = [
+    [{}, '-12'],
+    [null, '-12'],
+    ['loud', '-12'],
+    [{ db: 'x' }, '-12'],
+    [{ db: 6 }, '0'],
+    [{ db: -90 }, '-40'],
+  ];
+  for (const [board, want] of cases) {
+    const { window } = await loadApp({ store: { ...SKIP_WIZARD, boardLevelMigrated: true, board }, vf: ONE_SOUND });
+    const el = window.document.getElementById('boardVol');
+    assert.equal(el.value, want, JSON.stringify(board));
+    assert.equal(window.document.getElementById('boardVolVal').textContent, want + ' dB');
+    window.close();
+  }
+});
+
+test('game-only hotkey settings: list is hidden until enabled, and changes reach the main process', async () => {
+  const { window, calls, settle } = await loadApp({ store: SKIP_WIZARD });
+  const $ = (id) => window.document.getElementById(id);
+  assert.equal($('gameListRow').hidden, true);
+  assert.equal($('gameCursorRow').hidden, true);
+  assert.equal($('optGameCursor').checked, true);
+  assert.equal($('gameList').value, 'VALORANT-Win64-Shipping.exe');
+
+  $('optGameOnly').checked = true;
+  $('optGameOnly').dispatchEvent(new window.Event('change'));
+  await settle();
+  assert.equal($('gameListRow').hidden, false);
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && c[1].gameOnlyHotkeys === true));
+
+  $('optGameCursor').checked = false;
+  $('optGameCursor').dispatchEvent(new window.Event('change'));
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && c[1].gameNeedsHiddenCursor === false));
+
+  $('gameList').value = 'cs2.exe\n\n r5apex.exe ';
+  $('gameList').dispatchEvent(new window.Event('change'));
+  await settle();
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && JSON.stringify(c[1].gameList) === JSON.stringify(['cs2.exe', 'r5apex.exe'])));
+  window.close();
+});
+
+test('main window tells the user whether a virtual cable is installed', async () => {
+  const withCable = await loadApp({ store: SKIP_WIZARD });
+  assert.match(withCable.window.document.getElementById('cableHint').textContent, /CABLE Input/);
+  assert.equal(withCable.window.document.querySelector('#cableHint button'), null);
+  withCable.window.close();
+
+  const without = await loadApp({ store: SKIP_WIZARD, noCable: true });
+  const hint = without.window.document.getElementById('cableHint');
+  assert.match(hint.textContent, /No virtual cable found/);
+  hint.querySelector('button').click();
+  assert.ok(without.calls.some((c) => c[0] === 'openExternal' && /vb-audio\.com\/Cable/.test(c[1])));
+  without.window.close();
+});

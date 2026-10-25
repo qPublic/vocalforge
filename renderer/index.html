@@ -63,7 +63,7 @@
     <p id="boardEmpty" class="boardEmpty">No sounds yet. Add MP3, WAV or OGG clips, give each a global hotkey, and trigger them while you game or stream. They play into your mic output.</p>
     <div id="padGrid"></div>
   </section>
-  <p class="hint">Tip: set Output to <b>CABLE Input</b> (VB-Cable), then pick <b>CABLE Output</b> as your microphone in Discord/OBS. Use headphones when monitoring to avoid feedback.</p>
+  <p class="hint" id="cableHint"></p>
 
   <div id="toast" role="status" hidden></div>
 
@@ -101,6 +101,12 @@
         <h4>Hotkeys</h4>
         <p>Global shortcuts work even when VocalForge is in the background. Sound hotkeys are set on each pad.</p>
         <div class="hkRow"><span>Mute microphone</span><span id="muteChip"></span></div>
+        <label class="opt"><input type="checkbox" id="optGameOnly"> Only use hotkeys while a game is the active window <small>(everywhere else your keys work normally)</small></label>
+        <label class="opt" id="gameCursorRow"><input type="checkbox" id="optGameCursor"> ...and only while the mouse is captured <small>(hotkeys pause when the cursor shows, like in-game chat, menus or the shop)</small></label>
+        <label id="gameListRow">Games, one program name per line
+          <textarea id="gameList" rows="5" spellcheck="false"></textarea>
+        </label>
+        <small id="gameListNote"></small>
       </section>
       <section>
         <h4>Debug</h4>
