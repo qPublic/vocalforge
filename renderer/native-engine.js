@@ -173,8 +173,8 @@ class NativeEngine {
   }
 
   // The main process turns the clip name into a path inside the sounds library.
-  async playSound(name) {
-    await this._call({ cmd: 'play', name });
+  async playSound(name, bytes, gainDb = 0) {
+    await this._call({ cmd: 'play', name, gain: gainDb });
   }
 
   hasSound() {

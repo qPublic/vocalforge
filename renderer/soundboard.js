@@ -23,18 +23,28 @@ const Soundboard = (() => {
   // Previews follow the soundboard volume. An audio element cannot go above full scale, so the slider tops out at 0 dB.
   const previewVolume = () => dbToLin(clampDb(store.board && store.board.db));
   let hintedCable = false;
+  let files = [];
+  let query = '';
+
+  // Per-clip volume: 0 dB (full) down to -20 dB, kept in the settings store. Never above full scale.
+  const CLIP_MIN_DB = -20;
+  const clipDb = (name) => {
+    const v = store.clipDb && store.clipDb[name];
+    return typeof v === 'number' && Number.isFinite(v) ? Math.min(0, Math.max(CLIP_MIN_DB, v)) : 0;
+  };
 
   async function preview(name) {
     const bytes = await window.vf.readSound(name);
     const url = URL.createObjectURL(new Blob([bytes]));
     const audio = new Audio(url);
-    audio.volume = previewVolume();
+    audio.volume = Math.min(1, previewVolume() * dbToLin(clipDb(name)));
     const monitor = store.devices && store.devices.mon;
     if (monitor && monitor !== 'default' && audio.setSinkId) {
       try {
         await audio.setSinkId(monitor);
       } catch {}
     }
+    audio.dataset.clip = name;
     previews.add(audio);
     audio.addEventListener('ended', () => {
       previews.delete(audio);
@@ -57,7 +67,7 @@ const Soundboard = (() => {
         return await preview(name);
       }
       const bytes = engine.hasSound(name) ? null : await window.vf.readSound(name);
-      await engine.playSound(name, bytes);
+      await engine.playSound(name, bytes, clipDb(name));
       if (!hintedCable && !(store.devices && store.devices.monitor)) {
         hintedCable = true;
         toast('Sounds play into your output (what other apps hear). Turn on Monitor to hear them yourself, or use the headphone button on a pad to preview.');
@@ -74,11 +84,21 @@ const Soundboard = (() => {
   }
 
   async function render() {
+    files = await window.vf.listSounds();
+    draw();
+  }
+
+  // Pads shown: those matching the search, in A to Z order. Hidden pads keep their hotkeys.
+  function draw() {
     const grid = $('padGrid');
-    const files = await window.vf.listSounds();
     grid.innerHTML = '';
     $('boardEmpty').hidden = files.length > 0;
-    for (const { name } of files) {
+    const q = query.trim().toLowerCase();
+    const shown = files
+      .filter(({ name }) => !q || prettyName(name).toLowerCase().includes(q))
+      .sort((a, b) => prettyName(a.name).localeCompare(prettyName(b.name), undefined, { sensitivity: 'base', numeric: true }));
+    $('boardNoMatch').hidden = !(files.length && !shown.length);
+    for (const { name } of shown) {
       const pad = document.createElement('div');
       pad.className = 'pad';
       const btn = document.createElement('button');
@@ -100,6 +120,7 @@ const Soundboard = (() => {
       del.addEventListener('click', async () => {
         await window.vf.removeSound(name);
         engine.forgetSound(name);
+        if (store.clipDb) delete store.clipDb[name];
         Hotkeys.forget('sound:' + name);
         persist();
         Hotkeys.prune();
@@ -107,7 +128,25 @@ const Soundboard = (() => {
         render();
       });
       row.append(Hotkeys.chip('sound:' + name), prev, del);
-      pad.append(btn, row);
+      const vol = document.createElement('input');
+      vol.type = 'range';
+      vol.className = 'padVol';
+      vol.min = String(CLIP_MIN_DB);
+      vol.max = '0';
+      vol.step = '1';
+      vol.value = String(clipDb(name));
+      vol.title = `Clip volume: ${clipDb(name)} dB`;
+      vol.setAttribute('aria-label', 'Volume for ' + prettyName(name));
+      vol.addEventListener('input', () => {
+        const db = Math.min(0, Math.max(CLIP_MIN_DB, Number(vol.value)));
+        store.clipDb = store.clipDb || {};
+        if (db === 0) delete store.clipDb[name];
+        else store.clipDb[name] = db;
+        vol.title = `Clip volume: ${db} dB`;
+        for (const a of previews) if (a.dataset.clip === name) a.volume = Math.min(1, previewVolume() * dbToLin(db));
+        persist();
+      });
+      pad.append(btn, row, vol);
       grid.append(pad);
     }
     Hotkeys.prune();
@@ -136,7 +175,7 @@ const Soundboard = (() => {
       board.db = clampDb(parseFloat(e.target.value));
       $('boardVolVal').textContent = board.db + ' dB';
       engine.setBoardLevel(board.db);
-      for (const a of previews) a.volume = previewVolume();
+      for (const a of previews) a.volume = Math.min(1, previewVolume() * dbToLin(clipDb(a.dataset.clip)));
       persist();
     });
     $('boardAdd').addEventListener('click', async () => {
@@ -146,6 +185,10 @@ const Soundboard = (() => {
       render();
     });
     $('boardBrowse').addEventListener('click', () => Catalog.open());
+    $('boardSearch').addEventListener('input', (e) => {
+      query = e.target.value;
+      draw();
+    });
     $('boardStop').addEventListener('click', stopAll);
 
     Hotkeys.onPrefix('sound:', (name) => play(name));

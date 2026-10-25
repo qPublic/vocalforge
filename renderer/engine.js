@@ -309,7 +309,7 @@ class Engine {
   }
 
   // Plays a clip (bytes from the main process) into the output. Decoded clips are cached.
-  async playSound(name, bytes) {
+  async playSound(name, bytes, gainDb = 0) {
     if (!this.ctx) throw new Error('Start the mixer first');
     let buffer = this.sounds.get(name);
     if (!buffer) {
@@ -319,10 +319,15 @@ class Engine {
     }
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
-    src.connect(this.nodes.board);
+    // Per-clip volume, capped at full scale like the board level.
+    const clipGain = this.ctx.createGain();
+    clipGain.gain.value = dbToLin(Math.min(0, Number.isFinite(gainDb) ? gainDb : 0));
+    src.connect(clipGain);
+    clipGain.connect(this.nodes.board);
     src.onended = () => {
       this.playing.delete(src);
       src.disconnect();
+      clipGain.disconnect();
     };
     this.playing.add(src);
     src.start();

@@ -185,3 +185,17 @@ test('native mode: turning noise suppression on is sent to the engine without an
   assert.deepEqual(errors, []);
   window.close();
 });
+
+test('native mode: a pad sends its clip volume to the engine', async () => {
+  const { window, engineLog, settle } = await loadApp({
+    native: true,
+    store: { ...SKIP_WIZARD, clipDb: { 'ding.wav': -6 } },
+    vf: { listSounds: async () => [{ name: 'ding.wav', size: 5 }] },
+  });
+  window.document.getElementById('startBtn').click();
+  await settle(60);
+  window.document.querySelector('.padPlay').click();
+  await settle(40);
+  assert.equal(cmds(engineLog, 'play')[0].gain, -6);
+  window.close();
+});

@@ -177,6 +177,7 @@ function setupEngine() {
         return false;
       }
       delete msg.name;
+      msg.gain = Number.isFinite(cmd.gain) ? Math.max(-40, Math.min(0, cmd.gain)) : 0;
     }
     const line = JSON.stringify(msg);
     if (line.length > 100000) return false;

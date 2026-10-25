@@ -36,6 +36,9 @@
     <button id="saveBtn">Save</button>
     <button id="delBtn">Delete</button>
     <button id="resetBtn">Reset</button>
+    <button id="exportBtn" title="Save this preset to a file you can share">Export</button>
+    <button id="importBtn" title="Load a preset file someone shared">Import…</button>
+    <input type="file" id="importFile" accept=".vfpreset,.json,application/json" hidden>
     <button id="blownBtn" title="Make your mic loud, crunchy and terrible on purpose">Blown-out mic</button>
     <button id="autoBtn" title="Listen to your voice and suggest settings">Auto-tune my voice</button>
   </section>
@@ -56,11 +59,13 @@
       <h2>Soundboard</h2>
       <button id="boardAdd">Add sounds…</button>
       <button id="boardBrowse">Browse sound packs…</button>
+      <input type="search" id="boardSearch" placeholder="Search sounds" aria-label="Search sounds">
       <label>Volume <input type="range" id="boardVol" min="-40" max="0" step="1"> <b id="boardVolVal"></b></label>
       <span class="stopGroup"><button id="boardStop">Stop all</button><span id="stopChip"></span></span>
       <span id="boardStatus" role="status"></span>
     </div>
     <p id="boardEmpty" class="boardEmpty">No sounds yet. Add MP3, WAV or OGG clips, give each a global hotkey, and trigger them while you game or stream. They play into your mic output.</p>
+    <p id="boardNoMatch" class="boardEmpty" hidden>No sounds match your search.</p>
     <div id="padGrid"></div>
   </section>
   <p class="hint" id="cableHint"></p>
@@ -123,6 +128,7 @@
   </dialog>
 
   <script src="engine.js"></script>
+  <script src="preset-io.js"></script>
   <script src="native-engine.js"></script>
   <script src="app.js"></script>
   <script src="autotune-core.js"></script>

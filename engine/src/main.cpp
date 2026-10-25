@@ -135,6 +135,7 @@ struct Clip {
 struct Voice {
   std::shared_ptr<const Clip> clip;
   size_t pos = 0;
+  float gain = 1.f;  // per-clip volume, never above full scale
 };
 
 // ---------- the engine ----------
@@ -306,7 +307,7 @@ class Engine {
     return true;
   }
 
-  bool play(const std::string& path, std::string& err) {
+  bool play(const std::string& path, double gainDb, std::string& err) {
     if (!running_) {
       err = "Start the mixer first";
       return false;
@@ -320,7 +321,7 @@ class Engine {
       clips_[path] = clip;
     }
     std::lock_guard<std::mutex> lock(voiceMutex_);
-    pendingVoices_.push_back(Voice{clip, 0});
+    pendingVoices_.push_back(Voice{clip, 0, (float)dbToLin(std::min(0.0, std::max(-40.0, gainDb)))});
     return true;
   }
 
@@ -494,7 +495,7 @@ class Engine {
         Voice& vo = voices_[v];
         const auto& s = vo.clip->samples;
         ma_uint32 i = 0;
-        for (; i < m && vo.pos < s.size(); i++, vo.pos++) extra[i] += s[vo.pos] * bl;
+        for (; i < m && vo.pos < s.size(); i++, vo.pos++) extra[i] += s[vo.pos] * bl * vo.gain;
         if (vo.pos >= s.size()) voices_.erase(voices_.begin() + v);
         else v++;
       }
@@ -634,7 +635,8 @@ void handle(Engine& engine, const json& j, bool& quit) {
     if (!engine.setOutput(j.value("device", "default"), err)) return emitError(err, id);
     reply({{"event", "ok"}});
   } else if (cmd == "play") {
-    if (!engine.play(j.value("path", ""), err)) return emitError(err, id);
+    const double gainDb = j.contains("gain") && j["gain"].is_number() ? j["gain"].get<double>() : 0.0;
+    if (!engine.play(j.value("path", ""), gainDb, err)) return emitError(err, id);
     reply({{"event", "played"}});
   } else if (cmd == "stopSounds") {
     engine.stopSounds();

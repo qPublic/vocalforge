@@ -56,3 +56,6 @@
 #gameListRow[hidden] { display: none; }
 #gameList { width: 100%; box-sizing: border-box; background: #14171c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-family: Consolas, monospace; font-size: 12px; resize: vertical; }
 #gameListNote { color: #e6a23c; }
+
+#boardSearch { min-width: 140px; max-width: 200px; }
+.padVol { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }

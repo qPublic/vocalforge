@@ -239,3 +239,31 @@ test('the engine exits by itself when its parent closes stdin', opts, async () =
   if (code === 'hung') e.proc.kill();
   assert.equal(code, 0);
 });
+
+test('protocol: a clip gain lowers that clip, and is never louder than full scale', opts, async () => {
+  const e = new EngineProcess();
+  e.send({ cmd: 'start', id: 1 });
+  await e.waitFor((x) => x.id === 1 && x.event === 'started');
+  // Everything after the soundboard is neutral, so the level change is just the clip gain.
+  e.send({ cmd: 'set', values: { compOn: false, deessOn: false, gateOn: false, eqOn: false, limOn: false, hpfOn: false } });
+  const clip = path.join(__dirname, '..', 'catalog', 'sounds', 'ding.wav');
+  const peakFor = async (gain) => {
+    const from = e.events.length;
+    const cmd = { cmd: 'play', path: clip, id: 100 + Math.round(Math.abs(gain || 0)) };
+    if (gain !== undefined) cmd.gain = gain;
+    e.send(cmd);
+    await e.waitFor((x) => x.id === cmd.id && x.event === 'played');
+    await new Promise((r) => setTimeout(r, 1200));
+    const peak = Math.max(...e.events.slice(from).filter((x) => x.event === 'meters').map((x) => x.out));
+    e.send({ cmd: 'stopSounds' });
+    await new Promise((r) => setTimeout(r, 400));
+    return peak;
+  };
+  const full = await peakFor(0);
+  const quiet = await peakFor(-20);
+  const louder = await peakFor(12); // a "boost" request is capped at full scale
+  assert.ok(full > -40, `the clip is audible at full gain (${full})`);
+  assert.ok(Math.abs(full - quiet - 20) < 2, `-20 dB clip gain lowers the level by about 20 dB, got ${(full - quiet).toFixed(1)}`);
+  assert.ok(Math.abs(louder - full) < 1, `a gain above 0 dB does nothing (${louder} vs ${full})`);
+  assert.equal(await e.close(), 0);
+});

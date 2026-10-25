@@ -150,6 +150,45 @@ $('resetBtn').addEventListener('click', () => {
   applyPreset('Clean voice (default)');
 });
 
+// ---------- preset files (see preset-io.js) ----------
+function downloadText(filename, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$('exportBtn').addEventListener('click', () => {
+  const picked = $('presetSel').value;
+  const name = picked && picked !== '(custom)' ? picked : $('presetName').value.trim() || 'My preset';
+  downloadText(cleanPresetName(name).replace(/[^\w .()-]/g, '_') + '.vfpreset', serializePreset(name, engine.values, FLAT));
+  toast('Preset exported.');
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > MAX_PRESET_BYTES) return toast('That file is too large to be a preset.', true);
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = parsePreset(String(reader.result), FLAT);
+    if (!result.ok) return toast(result.error, true);
+    if (Object.keys(store.user).length >= MAX_USER_PRESETS) return toast('You have too many saved presets. Delete one first.', true);
+    const name = uniquePresetName(result.name, new Set(Object.keys(allPresets())));
+    store.user[name] = result.values;
+    persist();
+    refreshPresets(name);
+    applyPreset(name);
+    toast(`Imported "${name}"` + (result.ignored ? ` (${result.ignored} unknown settings skipped)` : ''));
+  };
+  reader.onerror = () => toast('Could not read that file.', true);
+  reader.readAsText(file);
+});
+
 $('autoBtn').addEventListener('click', () => AutoTune.open());
 
 // Quick toggle for the blown-out mic effect (the same switch as in its panel).

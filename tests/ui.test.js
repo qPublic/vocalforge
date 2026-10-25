@@ -281,3 +281,93 @@ test('setup wizard always links to the VB-Audio Virtual Cable page on the cable 
   assert.ok(calls.some((c) => c[0] === 'openExternal' && /vb-audio\.com\/Cable/.test(c[1])));
   window.close();
 });
+
+test('presets can be exported to a file and imported back, and bad files are refused', async () => {
+  const { window, errors, settle } = await loadApp({ store: SKIP_WIZARD });
+  const $ = (id) => window.document.getElementById(id);
+  const downloads = [];
+  window.HTMLAnchorElement.prototype.click = function () {
+    downloads.push({ name: this.download });
+  };
+
+  // Export: the saved file is named after the preset.
+  $('presetSel').value = 'Warm podcast';
+  $('exportBtn').click();
+  assert.deepEqual(downloads.map((d) => d.name), ['Warm podcast.vfpreset']);
+
+  // Import a valid file: it becomes a selectable preset and is applied.
+  const doc = { format: 'vocalforge-preset', version: 1, name: 'Shared voice', values: { eqLow: 5, compOn: false, bogus: 1 } };
+  const pick = async (text) => {
+    const file = new window.File([text], 'x.vfpreset', { type: 'application/json' });
+    Object.defineProperty($('importFile'), 'files', { value: [file], configurable: true });
+    $('importFile').dispatchEvent(new window.Event('change'));
+    await settle(60);
+  };
+  await pick(JSON.stringify(doc));
+  assert.ok([...$('presetSel').options].some((o) => o.value === 'Shared voice'));
+  assert.equal($('presetSel').value, 'Shared voice');
+  assert.match($('toast').textContent, /Imported "Shared voice"/);
+  const saved = JSON.parse(window.localStorage.getItem('vocalforge.v1'));
+  assert.deepEqual(saved.user['Shared voice'], { eqLow: 5, compOn: false });
+
+  // The same name again gets a suffix instead of overwriting.
+  await pick(JSON.stringify(doc));
+  assert.ok([...$('presetSel').options].some((o) => o.value === 'Shared voice (2)'));
+
+  // A file that is not a preset shows an error and changes nothing.
+  const before = Object.keys(JSON.parse(window.localStorage.getItem('vocalforge.v1')).user).length;
+  await pick('definitely not a preset');
+  assert.match($('toast').textContent, /not a preset|not a VocalForge preset/);
+  assert.equal(Object.keys(JSON.parse(window.localStorage.getItem('vocalforge.v1')).user).length, before);
+  assert.deepEqual(errors, []);
+  window.close();
+});
+
+test('soundboard: pads are sorted A to Z, search filters them, and hidden pads keep their hotkeys', async () => {
+  const files = [{ name: 'beta.wav', size: 1 }, { name: 'alpha.wav', size: 1 }, { name: 'Zed.wav', size: 1 }, { name: 'clip10.wav', size: 1 }, { name: 'clip2.wav', size: 1 }];
+  const { window, calls, settle } = await loadApp({ store: { ...SKIP_WIZARD, hotkeys: { 'sound:beta.wav': 'Control+Alt+B' } }, vf: { listSounds: async () => files } });
+  await settle();
+  const $ = (id) => window.document.getElementById(id);
+  const names = () => [...window.document.querySelectorAll('.padPlay')].map((b) => b.textContent);
+  assert.deepEqual(names(), ['alpha', 'beta', 'clip2', 'clip10', 'Zed']);
+
+  $('boardSearch').value = 'ZE';
+  $('boardSearch').dispatchEvent(new window.Event('input'));
+  assert.deepEqual(names(), ['Zed']);
+  assert.equal($('boardNoMatch').hidden, true);
+
+  $('boardSearch').value = 'nothing like this';
+  $('boardSearch').dispatchEvent(new window.Event('input'));
+  assert.deepEqual(names(), []);
+  assert.equal($('boardNoMatch').hidden, false);
+
+  $('boardSearch').value = '';
+  $('boardSearch').dispatchEvent(new window.Event('input'));
+  assert.equal(names().length, 5);
+  // The beta pad was hidden for a while, but its hotkey registration was never dropped.
+  const last = calls.filter((c) => c[0] === 'setHotkeys').pop();
+  assert.ok(last && last[1].some((h) => h.action === 'sound:beta.wav'), 'beta keeps its hotkey');
+  window.close();
+});
+
+test('soundboard: per-clip volume is saved, never above 0 dB, and applies to previews', async () => {
+  const { window, settle } = await loadApp({ store: { ...SKIP_WIZARD, board: { db: -12 }, boardLevelMigrated: true }, vf: ONE_SOUND });
+  await settle();
+  const vol = window.document.querySelector('.padVol');
+  assert.equal(vol.max, '0');
+  assert.equal(vol.value, '0');
+  vol.value = '-10';
+  vol.dispatchEvent(new window.Event('input'));
+  const saved = JSON.parse(window.localStorage.getItem('vocalforge.v1'));
+  assert.equal(saved.clipDb['ding.wav'], -10);
+
+  window.document.querySelector('.padPrev').click();
+  await settle(40);
+  // board level -12 dB (0.251) times the clip's -10 dB (0.316)
+  assert.ok(Math.abs(window.__lastVolume - 0.251 * 0.316) < 0.005, `preview volume ${window.__lastVolume}`);
+
+  vol.value = '0';
+  vol.dispatchEvent(new window.Event('input'));
+  assert.equal(JSON.parse(window.localStorage.getItem('vocalforge.v1')).clipDb['ding.wav'], undefined);
+  window.close();
+});
