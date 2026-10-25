@@ -266,8 +266,8 @@ class Engine {
     dirty_ = true;
   }
   void setMuted(bool m) { muted_ = m; }
-  void setBoardDb(double db) { boardLin_ = (float)dbToLin(std::min(6.0, std::max(-60.0, db))); }
-  void setDesktopDb(double db) { deskLin_ = (float)dbToLin(std::min(6.0, std::max(-60.0, db))); }
+  void setBoardDb(double db) { boardLin_ = (float)dbToLin(std::min(0.0, std::max(-60.0, db))); }
+  void setDesktopDb(double db) { deskLin_ = (float)dbToLin(std::min(0.0, std::max(-60.0, db))); }
   void stopSounds() { clearVoices_ = true; }
 
   bool setDesktop(bool on, std::string& err) {
@@ -531,7 +531,7 @@ class Engine {
   ma_device_id outputId_{};
   bool outputIsDefault_ = true;
   std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, clearVoices_{false};
-  std::atomic<float> boardLin_{1.0f}, deskLin_{0.5f};
+  std::atomic<float> boardLin_{0.2512f}, deskLin_{0.5f};
   std::atomic<float> latencyMs_{0};
   bool primed_ = false;
   std::atomic<uint32_t> underruns_{0}, overruns_{0};
@@ -616,7 +616,7 @@ void handle(Engine& engine, const json& j, bool& quit) {
   } else if (cmd == "mute") {
     engine.setMuted(j.value("on", false));
   } else if (cmd == "boardLevel") {
-    engine.setBoardDb(j.value("db", 0.0));
+    engine.setBoardDb(j.value("db", -12.0));
   } else if (cmd == "desktopLevel") {
     engine.setDesktopDb(j.value("db", -6.0));
   } else if (cmd == "desktop") {

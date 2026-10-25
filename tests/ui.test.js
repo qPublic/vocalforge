@@ -210,3 +210,21 @@ test('volume: the mixer path is capped at 0 dB too', async () => {
   assert.equal(window.engine.boardDb, 0);
   window.close();
 });
+
+test('volume: missing, junk or out-of-range saved levels are repaired', async () => {
+  const cases = [
+    [{}, '-12'],
+    [null, '-12'],
+    ['loud', '-12'],
+    [{ db: 'x' }, '-12'],
+    [{ db: 6 }, '0'],
+    [{ db: -90 }, '-40'],
+  ];
+  for (const [board, want] of cases) {
+    const { window } = await loadApp({ store: { ...SKIP_WIZARD, boardLevelMigrated: true, board }, vf: ONE_SOUND });
+    const el = window.document.getElementById('boardVol');
+    assert.equal(el.value, want, JSON.stringify(board));
+    assert.equal(window.document.getElementById('boardVolVal').textContent, want + ' dB');
+    window.close();
+  }
+});

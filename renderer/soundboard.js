@@ -1,9 +1,12 @@
 // Soundboard: local clips, played into the mic output with optional global hotkeys.
 // Relies on globals: engine, store, persist, running, Hotkeys, $.
 
-const SAFE_DB = -12; // default soundboard level
 
 const Soundboard = (() => {
+  const SAFE_DB = -12; // default soundboard level
+  const MIN_DB = -40; // slider range; the top is 0 dB because an audio element cannot go above full scale
+  const MAX_DB = 0;
+  const clampDb = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(MAX_DB, Math.max(MIN_DB, v)) : SAFE_DB);
   const prettyName = (file) => file.replace(/\.[^.]+$/, '');
   let status;
 
@@ -18,7 +21,7 @@ const Soundboard = (() => {
   // output pointed at a virtual cable. Goes to the monitor device when one is chosen.
   const previews = new Set();
   // Previews follow the soundboard volume. An audio element cannot go above full scale, so the slider tops out at 0 dB.
-  const previewVolume = () => Math.min(1, dbToLin(Math.min(0, store.board && typeof store.board.db === 'number' ? store.board.db : SAFE_DB)));
+  const previewVolume = () => dbToLin(clampDb(store.board && store.board.db));
   let hintedCable = false;
 
   async function preview(name) {
@@ -115,18 +118,22 @@ const Soundboard = (() => {
     status = $('boardStatus');
     // Clips are mastered near full scale, so the old 0 dB default was far louder than a voice. Existing
     // settings are lowered once to a safe level; after that the slider is the user's to set.
-    const board = (store.board ??= { db: SAFE_DB });
+    if (!store.board || typeof store.board !== 'object') store.board = { db: SAFE_DB };
+    const board = store.board;
+    const before = board.db;
+    board.db = clampDb(board.db);
+    if (typeof before !== 'number') persist();
     if (!store.boardLevelMigrated) {
       board.db = Math.min(board.db, SAFE_DB);
       store.boardLevelMigrated = true;
-      persist();
     }
+    if (board.db !== before) persist();
     $('boardVol').value = board.db;
     $('boardVolVal').textContent = board.db + ' dB';
     engine.setBoardLevel(board.db);
 
     $('boardVol').addEventListener('input', (e) => {
-      board.db = parseFloat(e.target.value);
+      board.db = clampDb(parseFloat(e.target.value));
       $('boardVolVal').textContent = board.db + ' dB';
       engine.setBoardLevel(board.db);
       for (const a of previews) a.volume = previewVolume();
