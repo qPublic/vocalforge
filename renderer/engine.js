@@ -71,6 +71,7 @@ class Engine {
     this.onGate = () => {};
     this.onError = () => {};
     this.onDesktopFailed = () => {};
+    this.onDeviceLost = () => {};
     this.muted = false;
     this.bypass = false;
     this.reductionDb = 0;
@@ -137,6 +138,9 @@ class Engine {
         channelCount: 1,
       },
     });
+
+    // Unplugging the mic ends its track; the app reconnects (see app.js).
+    this.stream.getAudioTracks().forEach((t) => t.addEventListener('ended', () => this.ctx && this.stream && this.onDeviceLost('input')));
 
     const n = (this.nodes = {});
     n.src = ctx.createMediaStreamSource(this.stream);

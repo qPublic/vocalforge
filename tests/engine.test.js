@@ -306,3 +306,17 @@ test('native chain: bypass leaves only input gain and the limiter (the A/B compa
   assert.ok(db(rms(processed, 9600)) < db(rms(input, 9600)) - 3 || db(rms(processed, 9600)) > db(rms(input, 9600)) + 3, 'the default chain changes this signal');
   assert.ok(Math.abs(db(rms(bypassed, 9600)) - db(rms(input, 9600))) < 0.5, 'bypass leaves it alone');
 });
+
+test('protocol: stopping and switching the output are not reported as a lost device', opts, async () => {
+  const e = new EngineProcess();
+  await e.waitFor((x) => x.event === 'ready');
+  e.send({ cmd: 'start', input: 'default', output: 'default', id: 1 });
+  await e.waitFor((x) => x.event === 'started');
+  e.send({ cmd: 'output', device: 'default', id: 2 });
+  await e.waitFor((x) => x.id === 2);
+  e.send({ cmd: 'stop', id: 3 });
+  await e.waitFor((x) => x.event === 'stopped');
+  await new Promise((r) => setTimeout(r, 400));
+  assert.ok(!e.events.some((x) => x.event === 'deviceLost'), 'no deviceLost: ' + JSON.stringify(e.events.filter((x) => x.event === 'deviceLost')));
+  assert.equal(await e.close(), 0);
+});

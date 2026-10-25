@@ -23,6 +23,7 @@ class NativeEngine {
     this.onError = () => {};
     this.onDesktopFailed = () => {};
     this.onExited = () => {};
+    this.onDeviceLost = () => {};
     window.vf.onEngineEvent((e) => this._event(e));
   }
 
@@ -70,6 +71,9 @@ class NativeEngine {
       case 'error':
         // An error that carries an id answers a call that already timed out or was cancelled.
         if (e.id == null) this.onError(e.message);
+        break;
+      case 'deviceLost':
+        if (this.running) this.onDeviceLost(e.which);
         break;
       case 'exited': {
         const wasRunning = this.running;

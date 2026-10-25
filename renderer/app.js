@@ -244,6 +244,15 @@ async function loadDevices() {
 let running = false;
 async function toggle() {
   const btn = $('startBtn');
+  if (reconnectId) {
+    // Stop pressed while reconnecting: give up and go back to a clean Start state.
+    reconnectId = 0;
+    running = false;
+    try { await engine.stop(); } catch {}
+    btn.textContent = 'Start';
+    btn.classList.remove('on');
+    return;
+  }
   btn.disabled = true;
   try {
     if (running) {
@@ -301,6 +310,41 @@ function onDeviceChange(which) {
 for (const [id, which] of [['inSel', 'in'], ['outSel', 'out'], ['monSel', 'mon'], ['monChk', 'monitor']]) {
   $(id).addEventListener('change', () => onDeviceChange(which));
 }
+
+// A mic or output that disappears (unplugged, disabled) is reconnected on its own: the same devices are tried every
+// two seconds, and after about 20 seconds the lost one is replaced by the system default so audio keeps flowing.
+let reconnectId = 0;
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+const DEVICE_NAMES = { input: 'microphone', output: 'output device', monitor: 'monitor device' };
+engine.onDeviceLost = async (which) => {
+  if (!running || reconnectId) return;
+  const me = (reconnectId = Date.now());
+  const btn = $('startBtn');
+  const lost = DEVICE_NAMES[which] || 'audio device';
+  toast(`Your ${lost} was disconnected. Reconnecting...`, true);
+  btn.textContent = 'Reconnecting…';
+  try { await engine.stop(); } catch {}
+  for (let attempt = 1; reconnectId === me; attempt++) {
+    if (attempt === 11) {
+      const sel = which === 'input' ? 'inSel' : which === 'monitor' ? 'monSel' : 'outSel';
+      $(sel).value = 'default';
+      store.devices = { ...store.devices, [which === 'input' ? 'in' : which === 'monitor' ? 'mon' : 'out']: 'default' };
+      toast(`Still no ${lost}: using the default one for now.`, true);
+    }
+    try {
+      await engine.start({ inputId: store.devices.in, outputId: store.devices.out, monitorId: store.devices.mon, monitor: store.devices.monitor });
+      if (reconnectId !== me) { await engine.stop(); return; }
+      running = true;
+      reconnectId = 0;
+      btn.textContent = 'Stop';
+      toast('Reconnected.');
+      loadDevices().catch(() => {});
+      return;
+    } catch {
+      await sleepMs(2000);
+    }
+  }
+};
 
 // The native engine can stop on its own (crash, killed): put the UI back to a clean Start state.
 engine.onExited = () => {

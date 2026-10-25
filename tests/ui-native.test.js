@@ -266,3 +266,37 @@ test('native mode: Hear raw switches every effect off in the engine and back', a
   assert.ok(!raw.classList.contains('on'));
   window.close();
 });
+
+test('native mode: a microphone that disappears is reconnected on its own', async () => {
+  const { window, engineLog, emitEngine, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  const btn = window.document.getElementById('startBtn');
+  btn.click();
+  await settle();
+  assert.equal(btn.textContent, 'Stop');
+  emitEngine({ event: 'deviceLost', which: 'input' });
+  await settle();
+  await new Promise((r) => setTimeout(r, 50));
+  const kinds = engineLog.map((c) => c.cmd).filter((c) => c === 'start' || c === 'stop');
+  assert.deepEqual(kinds, ['start', 'stop', 'start'], 'stopped, then started again');
+  assert.equal(btn.textContent, 'Stop', 'back to running');
+  window.close();
+});
+
+test('native mode: pressing Stop while reconnecting gives up cleanly', async () => {
+  const { window, engineLog, emitEngine, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  const btn = window.document.getElementById('startBtn');
+  btn.click();
+  await settle();
+  const realSend = window.vf.sendEngine;
+  window.vf.sendEngine = (cmd) => {
+    if (cmd.cmd === 'start') { engineLog.push(cmd); setTimeout(() => emitEngine({ event: 'error', message: 'No such device', id: cmd.id }), 0); return Promise.resolve(true); }
+    return realSend(cmd);
+  };
+  emitEngine({ event: 'deviceLost', which: 'input' });
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(btn.textContent, 'Reconnecting…');
+  btn.click();
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(btn.textContent, 'Start');
+  window.close();
+});

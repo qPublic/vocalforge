@@ -234,6 +234,7 @@ class Engine {
     micRing_.clear();
     monRing_.clear();
     deskRing_.clear();
+    lostSent_ = false;
     micFeed_.reset(&micRing_, frames_);
     monFeed_.reset(&monRing_, frames_);
     outputId_ = hasOut ? idOut : ma_device_id{};
@@ -247,6 +248,7 @@ class Engine {
     cc.periodSizeInFrames = devicePeriod();
     cc.performanceProfile = ma_performance_profile_low_latency;
     cc.dataCallback = captureThunk;
+    cc.notificationCallback = notifyThunk;
     cc.pUserData = this;
     if (ma_device_init(&ctx_, &cc, &capture_) != MA_SUCCESS) {
       err = "Could not open the microphone";
@@ -268,6 +270,7 @@ class Engine {
       mc.periodSizeInFrames = devicePeriod();
       mc.performanceProfile = ma_performance_profile_low_latency;
       mc.dataCallback = monitorThunk;
+      mc.notificationCallback = notifyThunk;
       mc.pUserData = this;
       if (ma_device_init(&ctx_, &mc, &monitor_) != MA_SUCCESS) {
         err = "Could not open the monitor device";
@@ -467,7 +470,9 @@ class Engine {
       return true;
     }
     if (playbackInit_) {
+      quietStops_ = true;
       ma_device_uninit(&playback_);
+      quietStops_ = false;
       playbackInit_ = false;
     }
     micFeed_.unprime();
@@ -528,6 +533,7 @@ class Engine {
     pc.periodSizeInFrames = devicePeriod();
     pc.performanceProfile = ma_performance_profile_low_latency;
     pc.dataCallback = playbackThunk;
+    pc.notificationCallback = notifyThunk;
     pc.pUserData = this;
     if (ma_device_init(&ctx_, &pc, &playback_) != MA_SUCCESS) {
       err = "Could not open the output device";
@@ -592,6 +598,17 @@ class Engine {
   }
 
   // ----- audio callbacks -----
+  // A device that stops by itself (unplugged, disabled, driver reset) is reported once so the app can reconnect.
+  // Stops that this engine causes (stop, switching the output) are not.
+  static void notifyThunk(const ma_device_notification* n) {
+    if (n->type != ma_device_notification_type_stopped) return;
+    Engine* e = (Engine*)n->pDevice->pUserData;
+    if (!e->running_ || e->quietStops_) return;
+    const char* which = n->pDevice == &e->capture_ ? "input" : n->pDevice == &e->playback_ ? "output" : n->pDevice == &e->monitor_ ? "monitor" : nullptr;
+    if (!which) return;
+    bool expected = false;
+    if (e->lostSent_.compare_exchange_strong(expected, true)) emit({{"event", "deviceLost"}, {"which", which}});
+  }
   static void captureThunk(ma_device* d, void*, const void* in, ma_uint32 n) { ((Engine*)d->pUserData)->onCapture((const float*)in, n); }
   static void playbackThunk(ma_device* d, void* out, const void*, ma_uint32 n) { ((Engine*)d->pUserData)->onPlayback((float*)out, n); }
   static void monitorThunk(ma_device* d, void* out, const void*, ma_uint32 n) { ((Engine*)d->pUserData)->onMonitor((float*)out, n); }
@@ -727,6 +744,7 @@ class Engine {
   ma_uint32 frames_ = 240;
   ma_device_id outputId_{};
   bool outputIsDefault_ = true;
+  std::atomic<bool> quietStops_{false}, lostSent_{false};
   std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, bypass_{false}, clearVoices_{false};
   std::atomic<float> boardLin_{0.2512f}, deskLin_{0.5f};
   json detail_;  // what the devices actually negotiated, for diagnostics
