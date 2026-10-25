@@ -6,10 +6,12 @@ select as the mic in Discord, OBS or Zoom.
 
 ## Signal chain
 
-Mic -> input gain -> high-pass -> noise suppression (RNNoise, optional) -> noise gate -> 4-band EQ
--> de-esser -> compressor -> clarity (optional) -> blown-out mic (optional) -> limiter -> output
+Mic -> input gain -> high-pass -> noise suppression (RNNoise, optional) -> noise gate -> leveler (optional)
+-> click reducer (optional) -> 4-band EQ -> de-esser -> compressor -> clarity (optional) -> blown-out mic
+(optional) -> limiter -> output
 
-The soundboard and desktop audio join just before the limiter, so they skip the voice processing.
+The soundboard and desktop audio join just before the limiter, so they skip the voice processing. Desktop
+audio can be ducked while you talk.
 
 ## Audio engines
 
@@ -38,6 +40,11 @@ chat app. Use headphones when monitoring. The setup wizard walks through this an
 - Presets (built in and your own), with import and export as small files
 - Noise suppression, gate, EQ, de-esser, compressor, limiter
 - **Clarity**: lifts consonants and word starts so speech does not sound slurred
+- **Leveler**: slow automatic volume control, so you stay at the same level when you lean away or get loud
+- **Click reducer**: quiets keyboard and mouse clacks
+- **Duck desktop audio**: music and game sound dip while you talk and come back after
+- **Hear raw**: a button and hotkey that switch every effect off, to compare with your processed voice
+- Reconnects on its own if the mic or output is unplugged
 - **Auto-tune my voice**: listens to your room and voice and suggests settings for a natural sound
 - Blown-out mic effect: loud, clipped, crunchy bad-mic sound
 - Desktop audio channel (music, game audio) with its own level
@@ -73,6 +80,7 @@ Done:
 - [x] Game-only hotkeys
 - [x] Native C++ engine for lower latency (now the default), with delay measurement
 - [x] Clarity (enunciation) stage
+- [x] Hear raw (A/B), reconnect on unplug, leveler, desktop ducking, click reducer
 - [x] Preset import and export
 - [x] Silent auto-updates and a Restart button
 

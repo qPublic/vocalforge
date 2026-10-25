@@ -23,6 +23,10 @@ const PARAMS = {
     { id: 'levelTarget', label: 'Target level', min: -36, max: -10, step: 1, def: -22, unit: 'dB' },
     { id: 'levelRange', label: 'Max change', min: 0, max: 18, step: 1, def: 9, unit: 'dB' },
   ],
+  'Click reducer': [
+    { id: 'clickOn', label: 'On', type: 'toggle', def: false },
+    { id: 'clickAmt', label: 'Amount', min: 0, max: 100, step: 5, def: 60, unit: '%' },
+  ],
   EQ: [
     { id: 'eqOn', label: 'On', type: 'toggle', def: true },
     { id: 'eqLow', label: 'Low shelf 120 Hz', min: -12, max: 12, step: 0.5, def: 2, unit: 'dB' },
@@ -129,6 +133,7 @@ class Engine {
     await ctx.audioWorklet.addModule('clarity-processor.js');
     await ctx.audioWorklet.addModule('leveler-processor.js');
     await ctx.audioWorklet.addModule('ducker-processor.js');
+    await ctx.audioWorklet.addModule('clickreducer-processor.js');
     await ctx.audioWorklet.addModule('compressor-processor.js');
     await ctx.audioWorklet.addModule('limiter-processor.js');
     await ctx.audioWorklet.addModule('blown-processor.js');
@@ -180,6 +185,7 @@ class Engine {
     n.comp = new AudioWorkletNode(ctx, 'compressor-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.comp.port.onmessage = (e) => (this.reductionDb = e.data.reduction);
     n.level = new AudioWorkletNode(ctx, 'leveler-processor', { channelCountMode: 'explicit', channelCount: 1 });
+    n.click = new AudioWorkletNode(ctx, 'clickreducer-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.clarity = new AudioWorkletNode(ctx, 'clarity-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.blown = new AudioWorkletNode(ctx, 'blown-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.lim = new AudioWorkletNode(ctx, 'limiter-processor', { channelCountMode: 'explicit', channelCount: 1 });
@@ -196,7 +202,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.level, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.clarity, n.blown, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.level, n.click, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.clarity, n.blown, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.inGain.connect(n.duck, 0, 1);
@@ -241,7 +247,7 @@ class Engine {
     if (!n) return;
     // A/B comparison: while bypassed, every voice stage is off and only the input gain and limiter act.
     const v = this.bypass
-      ? { ...this.values, hpfOn: false, nsOn: false, gateOn: false, levelOn: false, eqOn: false, deessOn: false, compOn: false, clarityOn: false, lofiOn: false }
+      ? { ...this.values, hpfOn: false, nsOn: false, gateOn: false, levelOn: false, clickOn: false, eqOn: false, deessOn: false, compOn: false, clarityOn: false, lofiOn: false }
       : this.values;
     const t = this.ctx.currentTime;
     const ramp = (p, x) => p.setTargetAtTime(x, t, 0.015);
@@ -264,6 +270,10 @@ class Engine {
     dk.get('amount').value = v.duckAmt;
     dk.get('threshold').value = v.duckThr;
     dk.get('release').value = v.duckRel;
+
+    const ck = n.click.parameters;
+    ck.get('enabled').value = v.clickOn ? 1 : 0;
+    ck.get('amount').value = v.clickAmt / 100;
 
     const lv = n.level.parameters;
     lv.get('enabled').value = v.levelOn ? 1 : 0;

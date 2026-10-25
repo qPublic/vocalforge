@@ -155,6 +155,45 @@ struct Leveler {
   }
 };
 
+// ---------- click reducer (clickreducer-processor.js): quiets keyboard and mouse clicks ----------
+struct ClickReducer {
+  Biquad hp, lp;
+  double fast = 0, base = 0, voice = 0, gain = 1;
+  int hold = 0;
+  bool ready = false;
+  static void make(Biquad& b, double f, bool high) {
+    const double w = 2 * kPi * f / kRate, c = std::cos(w), alpha = std::sin(w) / (2 * 0.7071), a0 = 1 + alpha;
+    if (high) b.set((1 + c) / 2, -(1 + c), (1 + c) / 2, a0, -2 * c, 1 - alpha);
+    else b.set((1 - c) / 2, (1 - c), (1 - c) / 2, a0, -2 * c, 1 - alpha);
+  }
+  static double k(double ms) { return std::exp(-1.0 / (kRate * ms * 0.001)); }
+  void process(float* x, int n, const Params& p) {
+    if (!ready) {
+      make(hp, 2500, true);
+      make(lp, 1500, false);
+      ready = true;
+    }
+    const double amount = p.clickOn ? p.clickAmt / 100.0 : 0.0;
+    const double cut = std::pow(10.0, -24 * amount / 20);
+    const double fa = k(0.1), fr = k(4), ba = k(50), br = k(400), va = k(5), vr = k(80), ga = k(0.5), gr = k(20);
+    const int holdSamples = (int)std::lround(kRate * 0.012);
+    for (int i = 0; i < n; i++) {
+      const double in = x[i];
+      const double h = std::fabs(hp.process(in)), l = std::fabs(lp.process(in));
+      fast = h > fast ? h + (fast - h) * fa : h + (fast - h) * fr;
+      base = h > base ? h + (base - h) * ba : h + (base - h) * br;
+      voice = l > voice ? l + (voice - l) * va : l + (voice - l) * vr;
+      const bool talking = voice > 0.006;
+      const double ratio = talking ? 10 : 3.2;
+      if (amount > 0 && fast > 0.003 && fast > base * ratio) hold = holdSamples;
+      else if (hold > 0) hold--;
+      const double target = hold > 0 ? cut : 1.0;
+      gain = target + (gain - target) * (target < gain ? ga : gr);
+      x[i] = (float)(in * gain);
+    }
+  }
+};
+
 // ---------- clarity (clarity-processor.js): lifts consonants and word onsets in 1.2-4.5 kHz ----------
 struct Clarity {
   Biquad hp, lp;
@@ -387,7 +426,7 @@ class Chain {
     // Bypass (the A/B comparison): every voice stage is off, so only input gain, the limiter and output gain remain.
     Params tp = target_;
     if (bypass_.load(std::memory_order_relaxed)) {
-      tp.hpfOn = tp.nsOn = tp.gateOn = tp.levelOn = tp.eqOn = tp.deessOn = tp.compOn = tp.clarityOn = tp.lofiOn = false;
+      tp.hpfOn = tp.nsOn = tp.gateOn = tp.levelOn = tp.clickOn = tp.eqOn = tp.deessOn = tp.compOn = tp.clarityOn = tp.lofiOn = false;
     }
     const double glide = 1 - std::exp(-(double)n / (kRate * 0.015));
     const bool silent = muted_ && !measuring_.load(std::memory_order_relaxed);
@@ -417,6 +456,7 @@ class Chain {
     dn_.process(x, n, cur_.nsOn && !measuring_.load(std::memory_order_relaxed), cur_.nsAmt / 100.0);
     if (!measuring_.load(std::memory_order_relaxed)) gate_.process(x, n, cur_);
     lev_.process(x, n, cur_);
+    click_.process(x, n, cur_);
     for (int i = 0; i < n; i++) {
       double v = x[i];
       v = low_.process(v);
@@ -471,6 +511,7 @@ class Chain {
   Compressor comp_;
   Clarity clarity_;
   Leveler lev_;
+  ClickReducer click_;
   float side_[kMaxBlock] = {};
   double duckEnv_ = 0, duckGain_ = 1;
   int duckHold_ = 0;

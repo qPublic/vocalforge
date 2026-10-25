@@ -35,6 +35,7 @@ function jsProcess(input, D) {
   let x = highpass(input, D.hpfOn ? D.hpfFreq : 10, 0.707);
   x = run(loadProcessor('gate-processor.js', 'gate-processor'), x, { threshold: D.gateThr, release: D.gateRel, enabled: D.gateOn ? 1 : 0 });
   x = run(loadProcessor('leveler-processor.js', 'leveler-processor'), x, { target: D.levelTarget, range: D.levelRange, enabled: D.levelOn ? 1 : 0 });
+  x = run(loadProcessor('clickreducer-processor.js', 'clickreducer-processor'), x, { amount: D.clickAmt / 100, enabled: D.clickOn ? 1 : 0 });
   x = run(loadProcessor('deesser-processor.js', 'deesser-processor'), x, { freq: D.deessFreq, threshold: D.deessThr, amount: D.deessAmt, enabled: D.deessOn ? 1 : 0 });
   x = run(loadProcessor('compressor-processor.js', 'compressor-processor'), x, { threshold: D.compThr, ratio: D.compRatio, attack: D.compAtk, release: D.compRel, makeup: D.makeup, enabled: D.compOn ? 1 : 0 });
   x = run(loadProcessor('clarity-processor.js', 'clarity-processor'), x, { amount: D.clarityAmt / 100, enabled: D.clarityOn ? 1 : 0 });
@@ -374,4 +375,14 @@ test('native ducker matches the JavaScript ducker: desktop audio dips while the 
   assert.ok(worst < 0.1 * peakRef, `native and JavaScript duck differently: worst window difference ${worst.toExponential(2)} (desktop RMS ${peakRef.toFixed(3)})`);
   const removed = off.slice(sec(3), sec(4)).map((v, i) => v - on[sec(3) + i]);
   assert.ok(rms(removed) > 0.5 * peakRef, `the ducker removed only ${rms(removed).toFixed(4)} of ${peakRef.toFixed(4)} desktop RMS`);
+});
+
+test('native chain matches the JavaScript chain with the click reducer on', opts, () => {
+  const set = { hpfOn: false, eqOn: false, clickOn: true, clickAmt: 80 };
+  const D = { ...jsDefaults(), ...set };
+  const input = voice(6, -20, -62);
+  for (let k = 0; k < 6; k++) for (let i = 0; i < 480; i++) input[48000 * (k + 1) + i] += 0.3 * (Math.random() - 0.5) * Math.exp(-i / 120);
+  const { maxAbs, relRms } = errors(nativeProcess(input, set), jsProcess(input, D));
+  assert.ok(relRms < 1e-4, `relative RMS error ${relRms.toExponential(2)}`);
+  assert.ok(maxAbs < 1e-3, `max error ${maxAbs.toExponential(2)}`);
 });

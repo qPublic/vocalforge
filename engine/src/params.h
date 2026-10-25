@@ -17,6 +17,8 @@ struct Params {
   double gateThr = -52, gateRel = 0.18;
   bool levelOn = false;
   double levelTarget = -22, levelRange = 9;
+  bool clickOn = false;
+  double clickAmt = 60;
   bool eqOn = true;
   double eqLow = 2, eqMud = -2.5, eqPres = 3, eqAir = 2;
   bool deessOn = true;
@@ -55,6 +57,8 @@ inline const Field* fields(size_t& count) {
       {"levelOn", nullptr, &Params::levelOn, 0, 0},
       {"levelTarget", &Params::levelTarget, nullptr, -36, -10},
       {"levelRange", &Params::levelRange, nullptr, 0, 18},
+      {"clickOn", nullptr, &Params::clickOn, 0, 0},
+      {"clickAmt", &Params::clickAmt, nullptr, 0, 100},
       {"eqOn", nullptr, &Params::eqOn, 0, 0},
       {"eqLow", &Params::eqLow, nullptr, -12, 12},
       {"eqMud", &Params::eqMud, nullptr, -12, 6},
