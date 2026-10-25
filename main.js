@@ -308,7 +308,8 @@ function setupUpdates() {
   ipcMain.handle('update:check', async () => {
     await check();
   });
-  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall());
+  // Silent, and relaunch afterwards: an update should not walk the user through the install wizard again.
+  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall(true, true));
   win.webContents.once('did-finish-load', check);
   setInterval(check, 4 * 60 * 60 * 1000);
 }

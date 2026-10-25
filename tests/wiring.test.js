@@ -65,3 +65,8 @@ test('device dropdowns react to changes while the mixer is running', () => {
   // Rebuilding the lists must not throw away the user's current pick.
   assert.ok(app.includes('const current = sel.value'));
 });
+
+test('wiring: installing an update is silent and relaunches, so the install wizard is not shown again', () => {
+  const main = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'main.js'), 'utf8');
+  assert.ok(main.includes('autoUpdater.quitAndInstall(true, true)'));
+});
