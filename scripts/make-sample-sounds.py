@@ -390,6 +390,88 @@ def everyday():
     return c
 
 
+def game():
+    c = {}
+    c['game-coin'] = lowpass(cat(note(988, 0.07, 'square', attack=0.001), note(1319, 0.4, 'square', rate=7, attack=0.001)), 5000)
+    c['game-level-up'] = cat(*[note(f, 0.09, 'tri', rate=3) for f in (523, 659, 784)], mix(note(1047, 0.7, 'tri', rate=3), note(784, 0.7, 'tri', rate=3), note(659, 0.7, 'tri', rate=3)))
+    c['game-hit-marker'] = mix(decay(highpass(noise(0.05, 61), 2200), 110), gain(decay(osc(1700, 0.06), 80), 0.5))
+    c['game-headshot-ding'] = mix(decay(mix(osc(1760, 0.6), gain(osc(2637, 0.6), 0.4)), 8), gain(decay(highpass(noise(0.03, 62), 3000), 150), 0.5))
+    c['game-kill-streak'] = cat(*[decay(mix(osc(f, 0.22), gain(osc(f * 2, 0.22), 0.3)), 9) for f in (523, 587, 659, 740, 831, 988)])
+    c['game-round-start'] = mix(lowpass(fade(osc(196, 1.0, 'saw'), 0.06, 0.25), 900), lowpass(fade(osc(294, 1.0, 'saw'), 0.06, 0.25), 900), gain(lowpass(fade(osc(98, 1.0, 'saw'), 0.06, 0.25), 500), 0.8))
+    beep = lambda f, s: fade(osc(f, s, 'square'), 0.003, 0.01)
+    c['game-countdown-beeps'] = lowpass(cat(beep(880, 0.12), silence(0.38), beep(880, 0.12), silence(0.38), beep(880, 0.12), silence(0.38), beep(1320, 0.55)), 5000)
+    c['game-defeat'] = cat(note(392, 0.22, 'saw', rate=4), note(349, 0.22, 'saw', rate=4), note(311, 0.22, 'saw', rate=4), lowpass(note(262, 0.9, 'saw', rate=2.5), 1500))
+    return c
+
+
+def foley():
+    c = {}
+    def step(seed, tone=130):
+        return mix(decay(sweep(tone, tone * 0.5, 0.12), 40), gain(decay(lowpass(noise(0.12, seed), 900), 45), 0.6))
+    def steps(count, gap, seed0):
+        total = silence(count * gap + 0.3)
+        for i in range(count):
+            total = mix(total, at(gain(step(seed0 + i, 120 + 15 * (i % 2)), 0.8 + 0.2 * (i % 2)), i * gap, count * gap + 0.3))
+        return total
+    c['foley-footsteps-walk'] = steps(6, 0.45, 70)
+    c['foley-footsteps-run'] = steps(8, 0.25, 80)
+    c['foley-door-creak'] = bandpass(fade(osc(lambda t: 260 + 140 * math.sin(TAU * 1.3 * t) + 90 * t, 1.6, 'saw'), 0.08, 0.3), 200, 1800)
+    clink = lambda f: decay(mix(osc(f, 0.5), gain(osc(f * 1.5, 0.5), 0.5), gain(osc(f * 2.3, 0.5), 0.3)), 20)
+    c['foley-glass-clink'] = mix(clink(2400), at(gain(clink(3100), 0.7), 0.16, 0.7))
+    c['foley-water-drop'] = mix(decay(sweep(1300, 520, 0.14), 28), at(gain(decay(sweep(900, 500, 0.12), 30), 0.4), 0.12, 0.4))
+    r = random.Random(90)
+    bubbles = silence(1.2)
+    for i in range(7):
+        f0 = r.uniform(300, 700)
+        bubbles = mix(bubbles, at(gain(decay(sweep(f0, f0 * 2.2, 0.09), 30), r.uniform(0.4, 0.9)), i * 0.14 + r.uniform(0, 0.05), 1.2))
+    c['foley-bubbles'] = bubbles
+    c['foley-cloth-swish'] = fade(bandpass(noise(0.6, 91), 800, 5000), 0.15, 0.25)
+    zip_sig = silence(0.9)
+    t, k = 0.0, 0
+    while t < 0.75:
+        zip_sig = mix(zip_sig, at(gain(decay(highpass(noise(0.015, 300 + k), 2500 + 2500 * t), 250), 0.7), t, 0.9))
+        t += max(0.012, 0.05 - 0.05 * t * 0.9)
+        k += 1
+    c['foley-zipper'] = zip_sig
+    c['foley-bottle-pop'] = mix(decay(sweep(180, 650, 0.07), 45), gain(decay(highpass(noise(0.08, 92), 1500), 60), 0.6), at(gain(decay(osc(520, 0.2), 25), 0.3), 0.03, 0.3))
+    return c
+
+
+def synth_hits():
+    c = {}
+    c['synth-bass-drop'] = fade(sweep(190, 32, 1.4, 'sine'), 0.01, 0.15)
+    c['synth-808-hit'] = mix(decay(sweep(130, 45, 1.0), 3.0), gain(decay(highpass(noise(0.02, 93), 3000), 200), 0.4))
+    c['synth-stab-minor'] = lowpass(decay(mix(osc(220, 0.8, 'saw'), osc(262, 0.8, 'saw'), osc(330, 0.8, 'saw')), 6), 2500)
+    c['synth-arp-up'] = cat(*[note(f, 0.075, 'tri', rate=4) for f in (262, 330, 392, 523, 659, 784, 1047, 1319)])
+    c['synth-arp-down'] = cat(*[note(f, 0.075, 'tri', rate=4) for f in (1319, 1047, 784, 659, 523, 392, 330, 262)])
+    c['synth-wobble'] = lowpass(am(osc(110, 1.4, 'saw'), 7, 0.8), 1400)
+    c['synth-riser-short'] = ramp(sweep(200, 2400, 1.1, 'saw'), 0.15, 1.0)
+    c['synth-reverse-cymbal'] = fade(cymbal(1.4, 7)[::-1], 0.1, 0.02)
+    return c
+
+
+def timers():
+    c = {}
+    tick = lambda f, s: mix(decay(osc(f, 0.04), 120), gain(decay(highpass(noise(0.03, s), 2500), 200), 0.6))
+    c['timer-tick-tock'] = cat(tick(1500, 95), silence(0.45), tick(1100, 96), silence(0.45), tick(1500, 97), silence(0.45), tick(1100, 98), silence(0.2))
+    ticks = silence(2.2)
+    t, gap, k = 0.0, 0.5, 0
+    while t < 1.9:
+        ticks = mix(ticks, at(tick(1400, 110 + k), t, 2.2))
+        t += gap
+        gap = max(0.12, gap * 0.8)
+        k += 1
+    c['timer-countdown-ticks'] = ticks
+    pair = lambda: cat(fade(osc(1800, 0.09, 'square'), 0.002, 0.01), silence(0.06), fade(osc(1800, 0.09, 'square'), 0.002, 0.01), silence(0.3))
+    c['timer-alarm-done'] = lowpass(cat(pair(), pair(), pair()), 5000)
+    c['timer-stopwatch-click'] = cat(tick(2000, 99), silence(0.12), tick(1700, 100))
+    c['timer-metronome-120'] = mix(*[at(tick(1300, 120 + i), 0.5 * i, 2.1) for i in range(4)])
+    c['timer-wrong-buzzer'] = lowpass(fade(osc(150, 0.7, 'square'), 0.005, 0.05), 1200)
+    c['timer-correct-ding'] = decay(mix(osc(1568, 0.8), gain(osc(3136, 0.8), 0.25)), 6)
+    c['timer-gameshow-win'] = cat(*[note(f, 0.11, 'tri', rate=3) for f in (523, 659, 784)], mix(note(1047, 0.8, 'tri', rate=2.5), note(784, 0.8, 'tri', rate=2.5), note(659, 0.8, 'tri', rate=2.5)))
+    return c
+
+
 PACKS = [
     # id, name, subfolder ('' keeps the original flat location of the starter pack), description, builder
     ('vocalforge-starter', 'VocalForge starter pack', '', 'Original synthesized sound effects, free for any use.', starter),
@@ -403,6 +485,10 @@ PACKS = [
     ('interface', 'Interface sounds', 'interface', 'Clicks, toggles, swipes, key presses and a typewriter bell.', interface),
     ('fanfares', 'Fanfares and music', 'fanfares', 'Ta-da, victory fanfare, harp gliss, piano chord, drum roll and stingers.', fanfare),
     ('everyday', 'Everyday sounds', 'everyday', 'Doorbell, phone ring, camera shutter, knocking, alarm clock and a siren.', everyday),
+    ('game-feedback', 'Game feedback', 'game-feedback', 'Coins, level-ups, hit markers, headshot dings, kill streaks, round start and countdown beeps.', game),
+    ('foley', 'Foley and small sounds', 'foley', 'Footsteps, a creaking door, glass clinks, water drops, bubbles, a zipper and a bottle pop.', foley),
+    ('synth-hits', 'Synth hits and bass', 'synth-hits', 'Bass drops, an 808 hit, synth stabs, arpeggios, a wobble, risers and a reverse cymbal.', synth_hits),
+    ('timers-and-beeps', 'Timers and beeps', 'timers-and-beeps', 'Ticking, countdowns, alarms, a metronome, buzzers and game-show dings.', timers),
 ]
 
 

@@ -430,6 +430,174 @@
           "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/everyday/everyday-typing.wav"
         }
       ]
+    },
+    {
+      "id": "game-feedback",
+      "name": "Game feedback",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Coins, level-ups, hit markers, headshot dings, kill streaks, round start and countdown beeps.",
+      "clips": [
+        {
+          "name": "game-coin.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-coin.wav"
+        },
+        {
+          "name": "game-level-up.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-level-up.wav"
+        },
+        {
+          "name": "game-hit-marker.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-hit-marker.wav"
+        },
+        {
+          "name": "game-headshot-ding.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-headshot-ding.wav"
+        },
+        {
+          "name": "game-kill-streak.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-kill-streak.wav"
+        },
+        {
+          "name": "game-round-start.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-round-start.wav"
+        },
+        {
+          "name": "game-countdown-beeps.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-countdown-beeps.wav"
+        },
+        {
+          "name": "game-defeat.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/game-feedback/game-defeat.wav"
+        }
+      ]
+    },
+    {
+      "id": "foley",
+      "name": "Foley and small sounds",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Footsteps, a creaking door, glass clinks, water drops, bubbles, a zipper and a bottle pop.",
+      "clips": [
+        {
+          "name": "foley-footsteps-walk.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-footsteps-walk.wav"
+        },
+        {
+          "name": "foley-footsteps-run.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-footsteps-run.wav"
+        },
+        {
+          "name": "foley-door-creak.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-door-creak.wav"
+        },
+        {
+          "name": "foley-glass-clink.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-glass-clink.wav"
+        },
+        {
+          "name": "foley-water-drop.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-water-drop.wav"
+        },
+        {
+          "name": "foley-bubbles.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-bubbles.wav"
+        },
+        {
+          "name": "foley-cloth-swish.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-cloth-swish.wav"
+        },
+        {
+          "name": "foley-zipper.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-zipper.wav"
+        },
+        {
+          "name": "foley-bottle-pop.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/foley/foley-bottle-pop.wav"
+        }
+      ]
+    },
+    {
+      "id": "synth-hits",
+      "name": "Synth hits and bass",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Bass drops, an 808 hit, synth stabs, arpeggios, a wobble, risers and a reverse cymbal.",
+      "clips": [
+        {
+          "name": "synth-bass-drop.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-bass-drop.wav"
+        },
+        {
+          "name": "synth-808-hit.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-808-hit.wav"
+        },
+        {
+          "name": "synth-stab-minor.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-stab-minor.wav"
+        },
+        {
+          "name": "synth-arp-up.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-arp-up.wav"
+        },
+        {
+          "name": "synth-arp-down.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-arp-down.wav"
+        },
+        {
+          "name": "synth-wobble.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-wobble.wav"
+        },
+        {
+          "name": "synth-riser-short.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-riser-short.wav"
+        },
+        {
+          "name": "synth-reverse-cymbal.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/synth-hits/synth-reverse-cymbal.wav"
+        }
+      ]
+    },
+    {
+      "id": "timers-and-beeps",
+      "name": "Timers and beeps",
+      "author": "VocalForge",
+      "license": "CC0-1.0",
+      "description": "Ticking, countdowns, alarms, a metronome, buzzers and game-show dings.",
+      "clips": [
+        {
+          "name": "timer-tick-tock.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-tick-tock.wav"
+        },
+        {
+          "name": "timer-countdown-ticks.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-countdown-ticks.wav"
+        },
+        {
+          "name": "timer-alarm-done.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-alarm-done.wav"
+        },
+        {
+          "name": "timer-stopwatch-click.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-stopwatch-click.wav"
+        },
+        {
+          "name": "timer-metronome-120.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-metronome-120.wav"
+        },
+        {
+          "name": "timer-wrong-buzzer.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-wrong-buzzer.wav"
+        },
+        {
+          "name": "timer-correct-ding.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-correct-ding.wav"
+        },
+        {
+          "name": "timer-gameshow-win.wav",
+          "url": "https://raw.githubusercontent.com/qPublic/vocalforge/main/catalog/sounds/timers-and-beeps/timer-gameshow-win.wav"
+        }
+      ]
     }
   ]
 }
