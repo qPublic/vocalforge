@@ -135,6 +135,7 @@ const Wizard = (() => {
           : `<div class="wz-note warn"><b>No virtual cable found</b>Other apps need a virtual cable to hear your processed mic. VB-Cable is free.
              <span class="wz-actions"><button id="wzGet">Get VB-Cable</button><button id="wzScan">Re-scan devices</button></span></div>`
       }
+      <p class="wz-link">The virtual cable is VB-Audio's free VB-Cable. <a href="#" id="wzSite">Open the VB-Audio Virtual Cable page</a></p>
       <label class="wz-field">Send to <select class="wz-select" id="wzOut">${optionsHtml(opts('outSel'), choice.out)}</select></label>
       <label class="wz-check"><input type="checkbox" id="wzMon"${choice.monitor ? ' checked' : ''}> Let me hear myself <small>(use headphones to avoid feedback)</small></label>`;
     },
@@ -175,6 +176,10 @@ const Wizard = (() => {
       body.querySelector('#wzOut').onchange = (e) => (choice.out = e.target.value);
       body.querySelector('#wzMon').onchange = (e) => (choice.monitor = e.target.checked);
       body.querySelector('#wzGet')?.addEventListener('click', () => window.vf.openExternal(CABLE_URL));
+      body.querySelector('#wzSite').addEventListener('click', (e) => {
+        e.preventDefault();
+        window.vf.openExternal(CABLE_URL);
+      });
       body.querySelector('#wzScan')?.addEventListener('click', async () => {
         await loadDevices();
         const cable = cableOutput();

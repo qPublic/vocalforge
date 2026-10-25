@@ -267,3 +267,17 @@ test('main window tells the user whether a virtual cable is installed', async ()
   assert.ok(without.calls.some((c) => c[0] === 'openExternal' && /vb-audio\.com\/Cable/.test(c[1])));
   without.window.close();
 });
+
+test('setup wizard always links to the VB-Audio Virtual Cable page on the cable step', async () => {
+  const { window, calls, settle } = await loadApp();
+  const next = () => window.document.querySelector('.wz-next').click();
+  next();
+  await settle();
+  next();
+  await settle();
+  const link = window.document.getElementById('wzSite');
+  assert.ok(link, 'the link is on the output step even though a cable is installed');
+  link.click();
+  assert.ok(calls.some((c) => c[0] === 'openExternal' && /vb-audio\.com\/Cable/.test(c[1])));
+  window.close();
+});
