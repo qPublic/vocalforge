@@ -34,6 +34,7 @@ function nativeProcess(input, values = {}) {
 function jsProcess(input, D) {
   let x = highpass(input, D.hpfOn ? D.hpfFreq : 10, 0.707);
   x = run(loadProcessor('gate-processor.js', 'gate-processor'), x, { threshold: D.gateThr, release: D.gateRel, enabled: D.gateOn ? 1 : 0 });
+  x = run(loadProcessor('leveler-processor.js', 'leveler-processor'), x, { target: D.levelTarget, range: D.levelRange, enabled: D.levelOn ? 1 : 0 });
   x = run(loadProcessor('deesser-processor.js', 'deesser-processor'), x, { freq: D.deessFreq, threshold: D.deessThr, amount: D.deessAmt, enabled: D.deessOn ? 1 : 0 });
   x = run(loadProcessor('compressor-processor.js', 'compressor-processor'), x, { threshold: D.compThr, ratio: D.compRatio, attack: D.compAtk, release: D.compRel, makeup: D.makeup, enabled: D.compOn ? 1 : 0 });
   x = run(loadProcessor('clarity-processor.js', 'clarity-processor'), x, { amount: D.clarityAmt / 100, enabled: D.clarityOn ? 1 : 0 });
@@ -319,4 +320,13 @@ test('protocol: stopping and switching the output are not reported as a lost dev
   await new Promise((r) => setTimeout(r, 400));
   assert.ok(!e.events.some((x) => x.event === 'deviceLost'), 'no deviceLost: ' + JSON.stringify(e.events.filter((x) => x.event === 'deviceLost')));
   assert.equal(await e.close(), 0);
+});
+
+test('native chain matches the JavaScript chain with the leveler on', opts, () => {
+  const set = { hpfOn: false, eqOn: false, levelOn: true, levelTarget: -20, levelRange: 12 };
+  const D = { ...jsDefaults(), ...set };
+  const input = voice(8, -26, -62);
+  const { maxAbs, relRms } = errors(nativeProcess(input, set), jsProcess(input, D));
+  assert.ok(relRms < 1e-4, `relative RMS error ${relRms.toExponential(2)}`);
+  assert.ok(maxAbs < 1e-3, `max error ${maxAbs.toExponential(2)}`);
 });

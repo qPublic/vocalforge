@@ -124,6 +124,37 @@ struct DeEsser {
   }
 };
 
+// ---------- leveler (leveler-processor.js): slow automatic volume control ----------
+struct Leveler {
+  double env = 0, gainDb = 0, gain = 1;
+  int count = 0;
+  void process(float* x, int n, const Params& p) {
+    const double envCoef = 1 - std::exp(-1.0 / (kRate * 0.15));
+    const int kStep = 64;
+    const double dt = (double)kStep / kRate, up = 4 * dt, down = 12 * dt;
+    const double range = p.levelRange, target = p.levelTarget;
+    for (int i = 0; i < n; i++) {
+      const double in = x[i];
+      env += (in * in - env) * envCoef;
+      if (++count >= kStep) {
+        count = 0;
+        if (!p.levelOn) {
+          gainDb = 0;
+        } else {
+          const double envDb = 10 * std::log10(env + 1e-12);
+          if (envDb > -50) {
+            const double want = std::min(range, std::max(-range, target - envDb));
+            gainDb += std::min(up, std::max(-down, want - gainDb));
+          }
+          gainDb = std::min(range, std::max(-range, gainDb));
+        }
+        gain = std::pow(10.0, gainDb / 20);
+      }
+      x[i] = (float)(in * gain);
+    }
+  }
+};
+
 // ---------- clarity (clarity-processor.js): lifts consonants and word onsets in 1.2-4.5 kHz ----------
 struct Clarity {
   Biquad hp, lp;
@@ -355,7 +386,7 @@ class Chain {
     // Bypass (the A/B comparison): every voice stage is off, so only input gain, the limiter and output gain remain.
     Params tp = target_;
     if (bypass_.load(std::memory_order_relaxed)) {
-      tp.hpfOn = tp.nsOn = tp.gateOn = tp.eqOn = tp.deessOn = tp.compOn = tp.clarityOn = tp.lofiOn = false;
+      tp.hpfOn = tp.nsOn = tp.gateOn = tp.levelOn = tp.eqOn = tp.deessOn = tp.compOn = tp.clarityOn = tp.lofiOn = false;
     }
     const double glide = 1 - std::exp(-(double)n / (kRate * 0.015));
     const bool silent = muted_ && !measuring_.load(std::memory_order_relaxed);
@@ -383,6 +414,7 @@ class Chain {
     for (int i = 0; i < n; i++) x[i] = (float)hp_.process(x[i]);
     dn_.process(x, n, cur_.nsOn && !measuring_.load(std::memory_order_relaxed), cur_.nsAmt / 100.0);
     if (!measuring_.load(std::memory_order_relaxed)) gate_.process(x, n, cur_);
+    lev_.process(x, n, cur_);
     for (int i = 0; i < n; i++) {
       double v = x[i];
       v = low_.process(v);
@@ -419,6 +451,7 @@ class Chain {
   DeEsser deess_;
   Compressor comp_;
   Clarity clarity_;
+  Leveler lev_;
   Blown blown_;
   Limiter lim_;
   Meters meters_;

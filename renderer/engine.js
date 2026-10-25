@@ -18,6 +18,11 @@ const PARAMS = {
     { id: 'gateThr', label: 'Threshold', min: -90, max: -10, step: 1, def: -52, unit: 'dB' },
     { id: 'gateRel', label: 'Release', min: 0.02, max: 1, step: 0.01, def: 0.18, unit: 's' },
   ],
+  Leveler: [
+    { id: 'levelOn', label: 'On', type: 'toggle', def: false },
+    { id: 'levelTarget', label: 'Target level', min: -36, max: -10, step: 1, def: -22, unit: 'dB' },
+    { id: 'levelRange', label: 'Max change', min: 0, max: 18, step: 1, def: 9, unit: 'dB' },
+  ],
   EQ: [
     { id: 'eqOn', label: 'On', type: 'toggle', def: true },
     { id: 'eqLow', label: 'Low shelf 120 Hz', min: -12, max: 12, step: 0.5, def: 2, unit: 'dB' },
@@ -116,6 +121,7 @@ class Engine {
     await ctx.audioWorklet.addModule('gate-processor.js');
     await ctx.audioWorklet.addModule('deesser-processor.js');
     await ctx.audioWorklet.addModule('clarity-processor.js');
+    await ctx.audioWorklet.addModule('leveler-processor.js');
     await ctx.audioWorklet.addModule('compressor-processor.js');
     await ctx.audioWorklet.addModule('limiter-processor.js');
     await ctx.audioWorklet.addModule('blown-processor.js');
@@ -166,6 +172,7 @@ class Engine {
     // stacked with ours and pushed the signal into the limiter.
     n.comp = new AudioWorkletNode(ctx, 'compressor-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.comp.port.onmessage = (e) => (this.reductionDb = e.data.reduction);
+    n.level = new AudioWorkletNode(ctx, 'leveler-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.clarity = new AudioWorkletNode(ctx, 'clarity-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.blown = new AudioWorkletNode(ctx, 'blown-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.lim = new AudioWorkletNode(ctx, 'limiter-processor', { channelCountMode: 'explicit', channelCount: 1 });
@@ -179,7 +186,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.clarity, n.blown, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.level, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.clarity, n.blown, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.out.connect(n.outMeter);
@@ -223,7 +230,7 @@ class Engine {
     if (!n) return;
     // A/B comparison: while bypassed, every voice stage is off and only the input gain and limiter act.
     const v = this.bypass
-      ? { ...this.values, hpfOn: false, nsOn: false, gateOn: false, eqOn: false, deessOn: false, compOn: false, clarityOn: false, lofiOn: false }
+      ? { ...this.values, hpfOn: false, nsOn: false, gateOn: false, levelOn: false, eqOn: false, deessOn: false, compOn: false, clarityOn: false, lofiOn: false }
       : this.values;
     const t = this.ctx.currentTime;
     const ramp = (p, x) => p.setTargetAtTime(x, t, 0.015);
@@ -240,6 +247,11 @@ class Engine {
     g.get('enabled').value = v.gateOn ? 1 : 0;
     g.get('threshold').value = v.gateThr;
     g.get('release').value = v.gateRel;
+
+    const lv = n.level.parameters;
+    lv.get('enabled').value = v.levelOn ? 1 : 0;
+    lv.get('target').value = v.levelTarget;
+    lv.get('range').value = v.levelRange;
 
     const eq = v.eqOn;
     ramp(n.low.gain, eq ? v.eqLow : 0);

@@ -15,6 +15,8 @@ struct Params {
   double nsAmt = 100;
   bool gateOn = true;
   double gateThr = -52, gateRel = 0.18;
+  bool levelOn = false;
+  double levelTarget = -22, levelRange = 9;
   bool eqOn = true;
   double eqLow = 2, eqMud = -2.5, eqPres = 3, eqAir = 2;
   bool deessOn = true;
@@ -48,6 +50,9 @@ inline const Field* fields(size_t& count) {
       {"gateOn", nullptr, &Params::gateOn, 0, 0},
       {"gateThr", &Params::gateThr, nullptr, -90, -10},
       {"gateRel", &Params::gateRel, nullptr, 0.02, 1},
+      {"levelOn", nullptr, &Params::levelOn, 0, 0},
+      {"levelTarget", &Params::levelTarget, nullptr, -36, -10},
+      {"levelRange", &Params::levelRange, nullptr, 0, 18},
       {"eqOn", nullptr, &Params::eqOn, 0, 0},
       {"eqLow", &Params::eqLow, nullptr, -12, 12},
       {"eqMud", &Params::eqMud, nullptr, -12, 6},
