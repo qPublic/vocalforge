@@ -48,6 +48,19 @@ function showWindow() {
   win.focus();
 }
 
+// A real restart. With "closing keeps it in the tray" the app never quits when the window closes, so
+// closing and reopening does not restart anything. The new copy opens visibly even if this one started hidden.
+// app.exit skips the quit hooks on purpose: a downloaded update installs through its own button or at a real
+// quit, never as a side effect of restarting (that would race the relaunch against the installer).
+async function restartApp() {
+  quitting = true;
+  if (gameWatch) gameWatch.stop();
+  await stopEngine();
+  globalShortcut.unregisterAll();
+  app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--hidden') });
+  app.exit(0);
+}
+
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')).resize({ width: 16, height: 16 });
   tray = new Tray(icon);
@@ -57,6 +70,7 @@ function createTray() {
       { label: 'Show VocalForge', click: showWindow },
       { label: 'Mute / unmute mic', click: () => win && win.webContents.send('hotkey', 'mute') },
       { type: 'separator' },
+      { label: 'Restart VocalForge', click: restartApp },
       { label: 'Quit', click: () => app.quit() },
     ]),
   );
@@ -116,6 +130,7 @@ app.on('will-quit', () => {
 // ---------- app settings (tray / startup) ----------
 function setupSettings() {
   const file = path.join(app.getPath('userData'), 'settings.json');
+  ipcMain.handle('app:restart', () => restartApp());
   ipcMain.handle('settings:get', () => settings);
   ipcMain.handle('settings:set', (_e, patch) => {
     settings = appSettings.save(file, { ...settings, ...patch });

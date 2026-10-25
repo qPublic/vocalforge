@@ -400,7 +400,7 @@ async function setupGeneral() {
   $('optBuffer').disabled = !nativeCfg.available;
   $('optNative').addEventListener('change', (e) => {
     window.vf.setSettings({ nativeEngine: e.target.checked });
-    $('nativeNote').textContent = 'Restart VocalForge to switch engines.';
+    $('nativeNote').textContent = 'Press Restart VocalForge above to switch engines.';
   });
   $('optBuffer').addEventListener('change', (e) => {
     store.nativeBuffer = NATIVE_BUFFER_CHOICES.includes(Number(e.target.value)) ? Number(e.target.value) : 240;
@@ -436,6 +436,11 @@ function setupSettings() {
   $('settingsBtn').addEventListener('click', () => {
     note('');
     dlg.showModal();
+  });
+  $('restartBtn').addEventListener('click', () => {
+    $('restartBtn').disabled = true;
+    $('restartBtn').textContent = 'Restarting…';
+    window.vf.restartApp();
   });
   $('tourBtn').addEventListener('click', () => {
     dlg.close();

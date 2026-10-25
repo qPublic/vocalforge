@@ -45,6 +45,7 @@ async function loadApp({ vf = {}, store, native = false, engineAvailable = nativ
     installUpdate: record('installUpdate', async () => {}),
     onUpdateStatus: () => {},
     openExternal: record('openExternal', async () => true),
+    restartApp: record('restartApp', async () => {}),
     toggleDevTools: record('toggleDevTools', async () => {}),
     getSettings: record('getSettings', async () => ({ launchAtLogin: false, closeToTray: false, gameOnlyHotkeys: false, gameNeedsHiddenCursor: true, gameList: ['VALORANT-Win64-Shipping.exe'] })),
     setSettings: record('setSettings', async (p) => p),

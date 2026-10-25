@@ -61,3 +61,6 @@
 .padVol { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
 
 .optHelp { display: block; color: var(--dim); font-size: 12px; line-height: 1.45; margin: 2px 0 8px; }
+
+.restartRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 2px; }
+.restartRow small { color: var(--dim); font-size: 12px; flex: 1 1 220px; line-height: 1.4; }

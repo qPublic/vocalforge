@@ -448,3 +448,14 @@ test('quick tour: a target taller than the window docks the card in the corner i
   assert.equal(card().style.top, '564px', '760 - 180 - 16');
   window.close();
 });
+
+test('Settings has a Restart VocalForge button that asks the main process to restart', async () => {
+  const { window, calls } = await loadApp({ store: SKIP_WIZARD });
+  const btn = window.document.getElementById('restartBtn');
+  assert.ok(btn, 'the button exists');
+  assert.match(btn.textContent, /Restart VocalForge/);
+  btn.click();
+  assert.ok(calls.some((c) => c[0] === 'restartApp'));
+  assert.equal(btn.disabled, true, 'it cannot be pressed twice');
+  window.close();
+});

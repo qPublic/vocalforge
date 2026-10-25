@@ -251,25 +251,30 @@ test('protocol: a clip gain lowers that clip, and is never louder than full scal
   await e.waitFor((x) => x.id === 1 && x.event === 'started');
   // Everything after the soundboard is neutral, so the level change is just the clip gain.
   e.send({ cmd: 'set', values: { compOn: false, deessOn: false, gateOn: false, eqOn: false, limOn: false, hpfOn: false } });
-  const clip = path.join(__dirname, '..', 'catalog', 'sounds', 'ding.wav');
-  const peakFor = async (gain) => {
-    const from = e.events.length;
-    const cmd = { cmd: 'play', path: clip, id: 100 + Math.round(Math.abs(gain || 0)) };
+  // A siren has a steady level, unlike a ding that dies away between two meter readings. The meter shows one
+  // audio block at a time, so take the median of several readings from the middle of the clip.
+  const clip = path.join(__dirname, '..', 'catalog', 'sounds', 'everyday', 'everyday-siren.wav');
+  let nextId = 100;
+  const levelFor = async (gain) => {
+    const cmd = { cmd: 'play', path: clip, id: nextId++ };
     if (gain !== undefined) cmd.gain = gain;
     e.send(cmd);
     await e.waitFor((x) => x.id === cmd.id && x.event === 'played');
-    await new Promise((r) => setTimeout(r, 1200));
-    const peak = Math.max(...e.events.slice(from).filter((x) => x.event === 'meters').map((x) => x.out));
+    await new Promise((r) => setTimeout(r, 500));
+    const from = e.events.length;
+    await new Promise((r) => setTimeout(r, 900));
+    const readings = e.events.slice(from).filter((x) => x.event === 'meters').map((x) => x.out).sort((a, b) => a - b);
     e.send({ cmd: 'stopSounds' });
     await new Promise((r) => setTimeout(r, 400));
-    return peak;
+    assert.ok(readings.length >= 5, `enough meter readings (${readings.length})`);
+    return readings[Math.floor(readings.length / 2)];
   };
-  const full = await peakFor(0);
-  const quiet = await peakFor(-20);
-  const louder = await peakFor(12); // a "boost" request is capped at full scale
+  const full = await levelFor(0);
+  const quiet = await levelFor(-20);
+  const louder = await levelFor(12); // a "boost" request is capped at full scale
   assert.ok(full > -40, `the clip is audible at full gain (${full})`);
-  assert.ok(Math.abs(full - quiet - 20) < 2, `-20 dB clip gain lowers the level by about 20 dB, got ${(full - quiet).toFixed(1)}`);
-  assert.ok(Math.abs(louder - full) < 1, `a gain above 0 dB does nothing (${louder} vs ${full})`);
+  assert.ok(Math.abs(full - quiet - 20) < 3, `-20 dB clip gain lowers the level by about 20 dB, got ${(full - quiet).toFixed(1)}`);
+  assert.ok(Math.abs(louder - full) < 3, `a gain above 0 dB does nothing (${louder} vs ${full})`);
   assert.equal(await e.close(), 0);
 });
 

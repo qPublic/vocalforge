@@ -88,3 +88,14 @@ test('wiring: the wizard logo does not reuse a class the meters style (their hei
   const clash = used.filter((c) => new RegExp('(^|[\\s,}])\\.' + c + '\\s*[{,.:\\s]').test(styles) && c !== 'wz-logo');
   assert.deepEqual(clash, [], 'these logo classes are also styled in styles.css: ' + clash.join(', '));
 });
+
+test('wiring: Restart relaunches visibly and exits without the quit hooks, from Settings and the tray', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8');
+  const fn = main.slice(main.indexOf('async function restartApp'), main.indexOf('function createTray'));
+  assert.ok(fn.includes("filter((a) => a !== '--hidden')"), 'the new copy opens visibly');
+  assert.ok(fn.includes('await stopEngine()') && fn.includes('app.relaunch(') && fn.includes('app.exit(0)'));
+  assert.ok(!fn.includes('app.quit()'), 'app.quit would run the auto-install-on-quit hook against the relaunch');
+  assert.ok(main.includes("ipcMain.handle('app:restart'") && main.includes("label: 'Restart VocalForge'"));
+  assert.ok(preload.includes("restartApp: () => ipcRenderer.invoke('app:restart')"));
+});
