@@ -78,6 +78,7 @@ async function loadApp({ vf = {}, store, native = false, engineAvailable = nativ
       } else if (cmd.cmd === 'start') reply({ event: 'started', latencyMs: 12 });
       else if (cmd.cmd === 'stop') reply({ event: 'stopped' });
       else if (cmd.cmd === 'play') reply({ event: 'played' });
+      else if (cmd.cmd === 'measure') reply({ event: 'measured', outputMs: 27.4, inputMs: 15, minMs: 26.9, maxMs: 27.8, noiseSuppressionMs: 0, trials: 3 });
       else if (['desktop', 'output'].includes(cmd.cmd)) reply({ event: 'ok' });
       return Promise.resolve(true);
     };

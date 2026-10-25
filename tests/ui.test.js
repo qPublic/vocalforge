@@ -421,3 +421,9 @@ test('first run: finishing the wizard can turn on start-with-Windows, then shows
   assert.equal(again.window.document.getElementById('wzLogin'), null);
   again.window.close();
 });
+
+test('the delay measurement is only offered for the native engine', async () => {
+  const { window } = await loadApp({ store: SKIP_WIZARD });
+  assert.equal(window.document.getElementById('measureRow').hidden, true);
+  window.close();
+});

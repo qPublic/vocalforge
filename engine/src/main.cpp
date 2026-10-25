@@ -263,6 +263,74 @@ class Engine {
 
   bool running() const { return running_; }
   float latencyMs() const { return latencyMs_; }
+
+  // Measures the delay from the effects chain input to the output device. A short click is injected at the
+  // chain input and timed until it shows up in a loopback capture of the output device, three times over.
+  // The mic's own buffering is not part of this and is estimated separately.
+  json measure(std::string& err) {
+    if (!running_) {
+      err = "Start the mixer first";
+      return json();
+    }
+    if (backend_ == "null") {
+      err = "Measuring needs a real audio device";
+      return json();
+    }
+    if (measureInit_) {
+      err = "A measurement is already running";
+      return json();
+    }
+    ma_device_config lc = ma_device_config_init(ma_device_type_loopback);
+    lc.capture.format = ma_format_f32;
+    lc.capture.channels = 2;
+    lc.capture.pDeviceID = outputIsDefault_ ? nullptr : &outputId_;
+    lc.sampleRate = kRate;
+    lc.dataCallback = measureThunk;
+    lc.pUserData = this;
+    if (ma_device_init(&ctx_, &lc, &measureDev_) != MA_SUCCESS) {
+      err = "Could not listen to the output device";
+      return json();
+    }
+    measureInit_ = true;
+    if (ma_device_start(&measureDev_) != MA_SUCCESS) {
+      ma_device_uninit(&measureDev_);
+      measureInit_ = false;
+      err = "Could not start listening to the output device";
+      return json();
+    }
+    chain_.setBypassNoise(true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));  // let the loopback settle
+
+    std::vector<double> ms;
+    for (int trial = 0; trial < 3; trial++) {
+      measureDetectNs_ = 0;
+      measureT0Ns_ = 0;
+      measureArmed_ = true;
+      measureInject_ = true;
+      for (int waited = 0; waited < 80 && measureDetectNs_.load() == 0; waited++) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      measureArmed_ = false;
+      const long long t1 = measureDetectNs_.load(), t0 = measureT0Ns_.load();
+      if (t1 > 0 && t0 > 0 && t1 > t0) ms.push_back((double)(t1 - t0) / 1e6);
+      std::this_thread::sleep_for(std::chrono::milliseconds(350));
+    }
+    chain_.setBypassNoise(false);
+    ma_device_uninit(&measureDev_);
+    measureInit_ = false;
+
+    if (ms.empty()) {
+      err = "The click never came back. Is the output device muted, or is something else playing on it?";
+      return json();
+    }
+    std::sort(ms.begin(), ms.end());
+    const double median = ms[ms.size() / 2];
+    const double ns = nsOn_.load() ? 10.0 : 0.0;
+    const double inputMs = capture_.capture.internalPeriodSizeInFrames * 1000.0 / std::max<ma_uint32>(1, capture_.sampleRate) + frames_ * 1000.0 / kRate;
+    json samples = json::array();
+    for (double v : ms) samples.push_back(std::round(v * 10) / 10);
+    return {{"outputMs", std::round((median + ns) * 10) / 10}, {"inputMs", std::round(inputMs * 10) / 10},
+            {"minMs", std::round((ms.front() + ns) * 10) / 10}, {"maxMs", std::round((ms.back() + ns) * 10) / 10},
+            {"noiseSuppressionMs", ns}, {"trials", (int)ms.size()}, {"samples", samples}};
+  }
   const json& detail() const { return detail_; }
 
   void setValues(const json& values) {
@@ -424,10 +492,24 @@ class Engine {
   static void playbackThunk(ma_device* d, void* out, const void*, ma_uint32 n) { ((Engine*)d->pUserData)->onPlayback((float*)out, n); }
   static void monitorThunk(ma_device* d, void* out, const void*, ma_uint32 n) { ((Engine*)d->pUserData)->onMonitor((float*)out, n); }
   static void loopbackThunk(ma_device* d, void*, const void* in, ma_uint32 n) { ((Engine*)d->pUserData)->onLoopback((const float*)in, n); }
+  static void measureThunk(ma_device* d, void*, const void* in, ma_uint32 n) { ((Engine*)d->pUserData)->onMeasure((const float*)in, n); }
 
   void onCapture(const float* in, ma_uint32 n) {
     if (!running_ || !in) return;
     if (micRing_.push(in, n) < n) overruns_++;
+  }
+
+  // Loopback of the output device while measuring: note when the injected click first appears.
+  static long long nowNs() { return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+  void onMeasure(const float* in, ma_uint32 n) {
+    if (!in || !measureArmed_.load() || measureT0Ns_.load() == 0 || measureDetectNs_.load() != 0) return;
+    for (ma_uint32 i = 0; i < n; i++) {
+      if (std::fabs(in[2 * i]) > 0.01f || std::fabs(in[2 * i + 1]) > 0.01f) {
+        // The callback runs when the block has just been captured, so the click was (n - i) frames ago.
+        measureDetectNs_ = nowNs() - (long long)((double)(n - i) * 1e9 / kRate);
+        return;
+      }
+    }
   }
 
   void onLoopback(const float* in, ma_uint32 n) {
@@ -487,6 +569,11 @@ class Engine {
         }
       }
       for (size_t i = got; i < m; i++) mic[i] = 0;
+      if (off == 0 && measureInject_.exchange(false)) {
+        // A 3 ms burst of 1 kHz at about -6 dBFS enters at the start of this block.
+        measureT0Ns_ = nowNs();
+        for (int i = 0; i < 144 && i < (int)m; i++) mic[i] += 0.5f * (float)std::sin(2.0 * kPi * 1000.0 * i / kRate) * (float)std::sin(kPi * i / 144.0);
+      }
 
       // Buses that join just before the limiter: soundboard voices and desktop audio.
       std::fill(extra, extra + m, 0.0f);
@@ -531,7 +618,10 @@ class Engine {
   std::string backend_;
   ma_context ctx_{};
   bool ctxReady_ = false;
-  ma_device capture_{}, playback_{}, monitor_{}, loopback_{};
+  ma_device capture_{}, playback_{}, monitor_{}, loopback_{}, measureDev_{};
+  bool measureInit_ = false;
+  std::atomic<bool> measureArmed_{false}, measureInject_{false};
+  std::atomic<long long> measureT0Ns_{0}, measureDetectNs_{0};
   bool captureInit_ = false, playbackInit_ = false, monitorInit_ = false, loopbackInit_ = false;
   ma_uint32 frames_ = 240;
   ma_device_id outputId_{};
@@ -638,6 +728,11 @@ void handle(Engine& engine, const json& j, bool& quit) {
     const double gainDb = j.contains("gain") && j["gain"].is_number() ? j["gain"].get<double>() : 0.0;
     if (!engine.play(j.value("path", ""), gainDb, err)) return emitError(err, id);
     reply({{"event", "played"}});
+  } else if (cmd == "measure") {
+    json r = engine.measure(err);
+    if (!err.empty()) return emitError(err, id);
+    r["event"] = "measured";
+    reply(r);
   } else if (cmd == "stopSounds") {
     engine.stopSounds();
   } else if (cmd == "quit") {

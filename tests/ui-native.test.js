@@ -199,3 +199,20 @@ test('native mode: a pad sends its clip volume to the engine', async () => {
   assert.equal(cmds(engineLog, 'play')[0].gain, -6);
   window.close();
 });
+
+test('native mode: the Measure my delay button reports the engine\'s numbers', async () => {
+  const { window, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  const $ = (id) => window.document.getElementById(id);
+  assert.equal($('measureRow').hidden, false, 'shown for the native engine');
+  $('measureBtn').click();
+  assert.match($('measureNote').textContent, /Press Start first/);
+  $('startBtn').click();
+  await settle(60);
+  $('measureBtn').click();
+  await settle(60);
+  assert.match($('measureNote').textContent, /About 42 ms/);
+  assert.match($('measureNote').textContent, /27 ms through the effects/);
+  assert.match($('measureNote').textContent, /Measured 3 times, 27 to 28 ms/);
+  assert.equal($('measureBtn').disabled, false);
+  window.close();
+});

@@ -267,3 +267,14 @@ test('protocol: a clip gain lowers that clip, and is never louder than full scal
   assert.ok(Math.abs(louder - full) < 1, `a gain above 0 dB does nothing (${louder} vs ${full})`);
   assert.equal(await e.close(), 0);
 });
+
+test('protocol: measure needs a running mixer and a real device', opts, async () => {
+  const e = new EngineProcess();
+  e.send({ cmd: 'measure', id: 1 });
+  assert.match((await e.waitFor((x) => x.id === 1)).message, /Start the mixer/);
+  e.send({ cmd: 'start', id: 2 });
+  await e.waitFor((x) => x.id === 2 && x.event === 'started');
+  e.send({ cmd: 'measure', id: 3 });
+  assert.match((await e.waitFor((x) => x.id === 3)).message, /real audio device/, 'the null backend has no loopback to listen to');
+  assert.equal(await e.close(), 0);
+});

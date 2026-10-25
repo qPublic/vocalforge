@@ -378,6 +378,24 @@ async function setupGeneral() {
   $('nativeNote').textContent = nativeCfg.available
     ? 'Lower-latency C++ audio engine. Restart VocalForge after changing this.'
     : 'The native engine file was not found in this install.';
+  $('measureRow').hidden = !engine.isNative;
+  $('measureBtn').addEventListener('click', async () => {
+    const note = (t) => ($('measureNote').textContent = t);
+    if (!running) return note('Press Start first, then measure.');
+    $('measureBtn').disabled = true;
+    note('Measuring…');
+    try {
+      const r = await engine.measureLatency();
+      const total = Math.round(r.outputMs + r.inputMs);
+      note(`About ${total} ms from your mic to your output device: ${Math.round(r.outputMs)} ms through the effects and Windows audio` +
+        `${r.noiseSuppressionMs ? ' (including noise suppression)' : ''}, plus about ${Math.round(r.inputMs)} ms of mic buffering. ` +
+        `Measured ${r.trials} times, ${Math.round(r.minMs)} to ${Math.round(r.maxMs)} ms.`);
+    } catch (err) {
+      note('Could not measure: ' + err.message);
+    } finally {
+      $('measureBtn').disabled = false;
+    }
+  });
   $('optBuffer').value = String(store.nativeBuffer || 240);
   $('optBuffer').disabled = !nativeCfg.available;
   $('optNative').addEventListener('change', (e) => {

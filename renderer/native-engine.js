@@ -177,6 +177,11 @@ class NativeEngine {
     await this._call({ cmd: 'play', name, gain: gainDb });
   }
 
+  // Plays a click through the chain and times it at the output device. Takes about 3 seconds.
+  measureLatency() {
+    return this._call({ cmd: 'measure' }, 20000);
+  }
+
   hasSound() {
     return true; // the engine reads and caches clips itself
   }

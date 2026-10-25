@@ -2,6 +2,7 @@
 // (and the Web Audio biquad formulas for the EQ), so the two engines sound the same.
 #pragma once
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -284,6 +285,8 @@ class Chain {
     first_ = false;
   }
   void setMuted(bool m) { muted_ = m; }
+  // The latency test plays a click, which RNNoise would treat as noise and remove.
+  void setBypassNoise(bool b) { bypassNoise_ = b; }
   const Meters& meters() const { return meters_; }
   double inLevelDb() const { return meters_.inDb; }
 
@@ -332,7 +335,7 @@ class Chain {
       inPeak = std::max(inPeak, std::fabs((double)x[i]));
     }
     for (int i = 0; i < n; i++) x[i] = (float)hp_.process(x[i]);
-    dn_.process(x, n, cur_.nsOn, cur_.nsAmt / 100.0);
+    dn_.process(x, n, cur_.nsOn && !bypassNoise_.load(std::memory_order_relaxed), cur_.nsAmt / 100.0);
     gate_.process(x, n, cur_);
     for (int i = 0; i < n; i++) {
       double v = x[i];
@@ -361,6 +364,7 @@ class Chain {
 
   Params target_, cur_;
   bool first_ = true, muted_ = false;
+  std::atomic<bool> bypassNoise_{false};
   double inG_ = 1, outG_ = 1, hpf_ = 80, eq_[4] = {0, 0, 0, 0};
   Biquad hp_, low_, mud_, pres_, air_;
   Denoise dn_;

@@ -124,7 +124,7 @@ function setupSettings() {
 // engine.exe speaks JSON lines on stdin/stdout. The renderer sends whitelisted commands through
 // 'engine:send' and receives every engine event through 'engine:event'.
 let engineProc = null;
-const ENGINE_CMDS = new Set(['hello', 'devices', 'start', 'stop', 'set', 'mute', 'boardLevel', 'desktop', 'desktopLevel', 'output', 'play', 'stopSounds']);
+const ENGINE_CMDS = new Set(['hello', 'devices', 'start', 'stop', 'set', 'mute', 'boardLevel', 'desktop', 'desktopLevel', 'output', 'play', 'stopSounds', 'measure']);
 const enginePath = () => (app.isPackaged ? path.join(process.resourcesPath, 'engine', 'engine.exe') : path.join(__dirname, 'engine', 'build', 'engine.exe'));
 const engineAvailable = () => fs.existsSync(enginePath());
 const sendEngineEvent = (evt) => win && !win.isDestroyed() && win.webContents.send('engine:event', evt);
