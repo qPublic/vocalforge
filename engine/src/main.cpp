@@ -140,7 +140,7 @@ class Feed {
     primed_ = false;
     clean_ = fadeIn_ = 0;
   }
-  void unprime() { primed_ = false; }
+  void unprime() { primed_ = false; }  // called from the control thread while the audio thread runs
   uint32_t cushion() const { return cushion_; }
   // Fills dst with m samples (zeros where the ring had nothing). Returns true if it ran dry.
   bool pull(float* dst, size_t m) {
@@ -175,7 +175,7 @@ class Feed {
   static constexpr uint32_t kFade = 64;
   Ring* ring_ = nullptr;
   uint32_t base_ = 240, cushion_ = 240, clean_ = 0, fadeIn_ = 0;
-  bool primed_ = false;
+  std::atomic<bool> primed_{false};
 };
 
 struct Clip {

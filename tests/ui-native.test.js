@@ -300,3 +300,33 @@ test('native mode: pressing Stop while reconnecting gives up cleanly', async () 
   assert.equal(btn.textContent, 'Start');
   window.close();
 });
+
+test('native mode: after about ten failed attempts the lost device is replaced by the default one', async () => {
+  const { window, engineLog, emitEngine, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  window.eval('RECONNECT_DELAY_MS = 1');
+  const inSel = window.document.getElementById('inSel');
+  inSel.value = 'aa'; // the "Native Mic"
+  inSel.dispatchEvent(new window.Event('change', { bubbles: true }));
+  window.document.getElementById('startBtn').click();
+  await settle();
+  assert.equal(cmds(engineLog, 'start')[0].input, 'aa');
+
+  const realSend = window.vf.sendEngine;
+  let attempts = 0;
+  window.vf.sendEngine = (cmd) => {
+    if (cmd.cmd !== 'start') return realSend(cmd);
+    engineLog.push(cmd);
+    attempts++;
+    if (attempts <= 10) setTimeout(() => emitEngine({ event: 'error', message: 'No such device', id: cmd.id }), 0);
+    else setTimeout(() => emitEngine({ event: 'started', latencyMs: 12, id: cmd.id }), 0);
+    return Promise.resolve(true);
+  };
+  emitEngine({ event: 'deviceLost', which: 'input' });
+  for (let i = 0; i < 100 && attempts < 11; i++) await new Promise((r) => setTimeout(r, 20));
+  await new Promise((r) => setTimeout(r, 50));
+  const starts = cmds(engineLog, 'start');
+  assert.equal(starts[starts.length - 2].input, 'aa', 'the same mic is tried first');
+  assert.equal(starts[starts.length - 1].input, 'default', 'then the default one');
+  assert.equal(window.document.getElementById('startBtn').textContent, 'Stop');
+  window.close();
+});

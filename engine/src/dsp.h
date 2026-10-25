@@ -428,6 +428,8 @@ class Chain {
     if (bypass_.load(std::memory_order_relaxed)) {
       tp.hpfOn = tp.nsOn = tp.gateOn = tp.levelOn = tp.clickOn = tp.eqOn = tp.deessOn = tp.compOn = tp.clarityOn = tp.lofiOn = false;
     }
+    // The delay test's click must reach the output untouched, so the stages that could react to it stay out.
+    if (measuring_.load(std::memory_order_relaxed)) tp.clickOn = tp.levelOn = false;
     const double glide = 1 - std::exp(-(double)n / (kRate * 0.015));
     const bool silent = muted_ && !measuring_.load(std::memory_order_relaxed);
     const double tInG = dbToLin(tp.inGain), tOutG = silent ? 0 : dbToLin(tp.outGain);

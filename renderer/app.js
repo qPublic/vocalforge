@@ -314,6 +314,7 @@ for (const [id, which] of [['inSel', 'in'], ['outSel', 'out'], ['monSel', 'mon']
 // A mic or output that disappears (unplugged, disabled) is reconnected on its own: the same devices are tried every
 // two seconds, and after about 20 seconds the lost one is replaced by the system default so audio keeps flowing.
 let reconnectId = 0;
+let RECONNECT_DELAY_MS = 2000; // not a constant only so a test can shorten it
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 const DEVICE_NAMES = { input: 'microphone', output: 'output device', monitor: 'monitor device' };
 engine.onDeviceLost = async (which) => {
@@ -341,7 +342,7 @@ engine.onDeviceLost = async (which) => {
       loadDevices().catch(() => {});
       return;
     } catch {
-      await sleepMs(2000);
+      await sleepMs(RECONNECT_DELAY_MS);
     }
   }
 };
