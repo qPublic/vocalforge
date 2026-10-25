@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The native audio engine is bundled into the installer and covered by the tests.
+      - run: npm run build:engine
       - run: npm test
       # Create the release up front as a draft: electron-builder uploads files in parallel and can
       # otherwise race to create duplicate releases, and a draft is invisible to the updater, so nobody
