@@ -70,3 +70,12 @@ test('wiring: installing an update is silent and relaunches, so the install wiza
   const main = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'main.js'), 'utf8');
   assert.ok(main.includes('autoUpdater.quitAndInstall(true, true)'));
 });
+
+test('wiring: the update installer waits for engine.exe to exit, and the model fetch uses a relative archive path', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+  const install = main.slice(main.indexOf("ipcMain.handle('update:install', async"));
+  assert.ok(install.indexOf('await stopEngine()') > 0 && install.indexOf('await stopEngine()') < install.indexOf('quitAndInstall'));
+  assert.ok(main.includes("app.on('before-quit', () => {") && main.includes('engineProc.kill()'));
+  const fetchScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'fetch-rnnoise-model.js'), 'utf8');
+  assert.ok(fetchScript.includes('path.basename(cache)') && fetchScript.includes('cwd: path.dirname(cache)'));
+});

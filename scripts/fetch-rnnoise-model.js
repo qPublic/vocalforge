@@ -27,8 +27,9 @@ async function main() {
     if (sha(data) !== SHA256) throw new Error('The downloaded RNNoise model does not match the pinned checksum');
     fs.writeFileSync(cache, data);
   }
-  // bsdtar ships with Windows 10 and later, and with the GitHub Windows runners.
-  const r = spawnSync('tar', ['-xzf', cache, '-C', dest, '--strip-components=1', 'src/rnnoise_data.c', 'src/rnnoise_data.h'], { stdio: 'inherit' });
+  // Run from the archive's folder with a relative name: GNU tar (Git for Windows) would read a "C:" path as
+  // a remote host. Windows 10 and later, and the GitHub runners, ship bsdtar, which accepts this too.
+  const r = spawnSync('tar', ['-xzf', path.basename(cache), '-C', dest, '--strip-components=1', 'src/rnnoise_data.c', 'src/rnnoise_data.h'], { stdio: 'inherit', cwd: path.dirname(cache) });
   if (r.status !== 0) throw new Error('Could not unpack the RNNoise model');
 }
 

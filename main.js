@@ -6,6 +6,7 @@ const sounds = require('./lib/sounds');
 const hotkeys = require('./lib/hotkeys');
 const appSettings = require('./lib/settings');
 const foreground = require('./lib/foreground');
+const { sanitizeEngineCommand } = require('./lib/engine-cmd');
 const catalog = require('./lib/catalog');
 
 let win;
@@ -101,7 +102,11 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => (quitting = true));
+app.on('before-quit', () => {
+  quitting = true;
+  // Early, so the file is free by the time an update installs silently on quit.
+  if (engineProc) engineProc.kill();
+});
 app.on('will-quit', () => {
   if (gameWatch) gameWatch.stop();
   globalShortcut.unregisterAll();
@@ -124,10 +129,24 @@ function setupSettings() {
 // engine.exe speaks JSON lines on stdin/stdout. The renderer sends whitelisted commands through
 // 'engine:send' and receives every engine event through 'engine:event'.
 let engineProc = null;
-const ENGINE_CMDS = new Set(['hello', 'devices', 'start', 'stop', 'set', 'mute', 'boardLevel', 'desktop', 'desktopLevel', 'output', 'play', 'stopSounds', 'measure']);
 const enginePath = () => (app.isPackaged ? path.join(process.resourcesPath, 'engine', 'engine.exe') : path.join(__dirname, 'engine', 'build', 'engine.exe'));
 const engineAvailable = () => fs.existsSync(enginePath());
 const sendEngineEvent = (evt) => win && !win.isDestroyed() && win.webContents.send('engine:event', evt);
+
+// Resolves once engine.exe has exited (or after a short wait). The silent update installer replaces that
+// file, which cannot happen while the process still has it open.
+function stopEngine(timeoutMs = 3000) {
+  const proc = engineProc;
+  if (!proc) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    proc.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    proc.kill();
+  });
+}
 
 function ensureEngine() {
   if (engineProc) return true;
@@ -166,18 +185,18 @@ function setupEngine() {
     e.returnValue = { available: engineAvailable(), enabled: !!settings.nativeEngine };
   });
   ipcMain.handle('engine:send', (_e, cmd) => {
-    if (!cmd || typeof cmd !== 'object' || !ENGINE_CMDS.has(cmd.cmd)) return false;
+    // Only known commands with exactly the fields they expect get through (see lib/engine-cmd.js).
+    const msg = sanitizeEngineCommand(cmd);
+    if (!msg) return false;
     if (!ensureEngine()) return false;
-    const msg = { ...cmd };
-    if (cmd.cmd === 'play') {
+    if (msg.cmd === 'play') {
       // The renderer names a clip; only the main process knows where the library lives.
       try {
-        msg.path = path.join(soundsDir(), sounds.safeName(cmd.name));
+        msg.path = path.join(soundsDir(), sounds.safeName(msg.name));
       } catch {
         return false;
       }
       delete msg.name;
-      msg.gain = Number.isFinite(cmd.gain) ? Math.max(-40, Math.min(0, cmd.gain)) : 0;
     }
     const line = JSON.stringify(msg);
     if (line.length > 100000) return false;
@@ -310,7 +329,10 @@ function setupUpdates() {
     await check();
   });
   // Silent, and relaunch afterwards: an update should not walk the user through the install wizard again.
-  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall(true, true));
+  ipcMain.handle('update:install', async () => {
+    await stopEngine();
+    autoUpdater.quitAndInstall(true, true);
+  });
   win.webContents.once('did-finish-load', check);
   setInterval(check, 4 * 60 * 60 * 1000);
 }

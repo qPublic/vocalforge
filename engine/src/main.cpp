@@ -242,6 +242,7 @@ class Engine {
   }
 
   void stop() {
+    abortMeasure();
     {
       std::lock_guard<std::mutex> lock(meterMutex_);
       meterStop_ = true;
@@ -266,20 +267,45 @@ class Engine {
 
   // Measures the delay from the effects chain input to the output device. A short click is injected at the
   // chain input and timed until it shows up in a loopback capture of the output device, three times over.
-  // The mic's own buffering is not part of this and is estimated separately.
-  json measure(std::string& err) {
+  // The mic's own buffering is not part of this and is estimated separately. It runs on its own thread, so
+  // other commands (stop, mute, settings) are not held up; the result arrives later as a "measured" event.
+  bool startMeasure(const json& id, std::string& err) {
     if (!running_) {
       err = "Start the mixer first";
-      return json();
+      return false;
     }
     if (backend_ == "null") {
       err = "Measuring needs a real audio device";
-      return json();
+      return false;
     }
-    if (measureInit_) {
+    if (measureBusy_.exchange(true)) {
       err = "A measurement is already running";
-      return json();
+      return false;
     }
+    if (measureThread_.joinable()) measureThread_.join();
+    measureAbort_ = false;
+    measureThread_ = std::thread([this, id] {
+      std::string e;
+      json r = runMeasure(e);
+      if (e.empty()) {
+        r["event"] = "measured";
+        if (!id.is_null()) r["id"] = id;
+        emit(r);
+      } else {
+        emitError(e, id);
+      }
+      measureBusy_ = false;
+    });
+    return true;
+  }
+
+  void abortMeasure() {
+    measureAbort_ = true;
+    if (measureThread_.joinable()) measureThread_.join();
+    measureBusy_ = false;
+  }
+
+  json runMeasure(std::string& err) {
     ma_device_config lc = ma_device_config_init(ma_device_type_loopback);
     lc.capture.format = ma_format_f32;
     lc.capture.channels = 2;
@@ -287,38 +313,60 @@ class Engine {
     lc.sampleRate = kRate;
     lc.dataCallback = measureThunk;
     lc.pUserData = this;
-    if (ma_device_init(&ctx_, &lc, &measureDev_) != MA_SUCCESS) {
+    ma_device dev{};
+    if (ma_device_init(&ctx_, &lc, &dev) != MA_SUCCESS) {
       err = "Could not listen to the output device";
       return json();
     }
-    measureInit_ = true;
-    if (ma_device_start(&measureDev_) != MA_SUCCESS) {
-      ma_device_uninit(&measureDev_);
-      measureInit_ = false;
+    measureArmed_ = false;
+    measureBaseline_ = 0.0f;
+    if (ma_device_start(&dev) != MA_SUCCESS) {
+      ma_device_uninit(&dev);
       err = "Could not start listening to the output device";
       return json();
     }
-    chain_.setBypassNoise(true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));  // let the loopback settle
+    chain_.setMeasuring(true);
+    auto nap = [&](int ms) {
+      for (int t = 0; t < ms && !measureAbort_.load(); t += 10) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    };
+    nap(300);  // let the loopback settle
 
     std::vector<double> ms;
-    for (int trial = 0; trial < 3; trial++) {
+    bool noisy = false;
+    for (int trial = 0; trial < 3 && !measureAbort_.load(); trial++) {
+      // Whatever else is playing on that output right now would be mistaken for the click.
+      measureBaseline_ = 0.0f;
+      nap(150);
+      const float base = measureBaseline_.load();
+      if (base > 0.05f) {
+        noisy = true;
+        break;
+      }
+      measureThreshold_ = std::max(0.01f, base * 3.0f);
       measureDetectNs_ = 0;
       measureT0Ns_ = 0;
       measureArmed_ = true;
       measureInject_ = true;
-      for (int waited = 0; waited < 80 && measureDetectNs_.load() == 0; waited++) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      for (int waited = 0; waited < 80 && measureDetectNs_.load() == 0 && !measureAbort_.load(); waited++) std::this_thread::sleep_for(std::chrono::milliseconds(10));
       measureArmed_ = false;
       const long long t1 = measureDetectNs_.load(), t0 = measureT0Ns_.load();
       if (t1 > 0 && t0 > 0 && t1 > t0) ms.push_back((double)(t1 - t0) / 1e6);
-      std::this_thread::sleep_for(std::chrono::milliseconds(350));
+      nap(350);
     }
-    chain_.setBypassNoise(false);
-    ma_device_uninit(&measureDev_);
-    measureInit_ = false;
+    chain_.setMeasuring(false);
+    measureInject_ = false;
+    ma_device_uninit(&dev);
 
+    if (measureAbort_.load()) {
+      err = "The measurement was cancelled";
+      return json();
+    }
+    if (noisy) {
+      err = "Something else is playing on that output. Pause it and try again.";
+      return json();
+    }
     if (ms.empty()) {
-      err = "The click never came back. Is the output device muted, or is something else playing on it?";
+      err = "The click never came back. Is the output device muted?";
       return json();
     }
     std::sort(ms.begin(), ms.end());
@@ -502,9 +550,17 @@ class Engine {
   // Loopback of the output device while measuring: note when the injected click first appears.
   static long long nowNs() { return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
   void onMeasure(const float* in, ma_uint32 n) {
-    if (!in || !measureArmed_.load() || measureT0Ns_.load() == 0 || measureDetectNs_.load() != 0) return;
+    if (!in) return;
+    if (!measureArmed_.load()) {
+      float peak = measureBaseline_.load();
+      for (ma_uint32 i = 0; i < 2 * n; i++) peak = std::max(peak, std::fabs(in[i]));
+      measureBaseline_ = peak;
+      return;
+    }
+    if (measureT0Ns_.load() == 0 || measureDetectNs_.load() != 0) return;
+    const float threshold = measureThreshold_.load();
     for (ma_uint32 i = 0; i < n; i++) {
-      if (std::fabs(in[2 * i]) > 0.01f || std::fabs(in[2 * i + 1]) > 0.01f) {
+      if (std::fabs(in[2 * i]) > threshold || std::fabs(in[2 * i + 1]) > threshold) {
         // The callback runs when the block has just been captured, so the click was (n - i) frames ago.
         measureDetectNs_ = nowNs() - (long long)((double)(n - i) * 1e9 / kRate);
         return;
@@ -618,10 +674,11 @@ class Engine {
   std::string backend_;
   ma_context ctx_{};
   bool ctxReady_ = false;
-  ma_device capture_{}, playback_{}, monitor_{}, loopback_{}, measureDev_{};
-  bool measureInit_ = false;
-  std::atomic<bool> measureArmed_{false}, measureInject_{false};
+  ma_device capture_{}, playback_{}, monitor_{}, loopback_{};
+  std::thread measureThread_;
+  std::atomic<bool> measureArmed_{false}, measureInject_{false}, measureBusy_{false}, measureAbort_{false};
   std::atomic<long long> measureT0Ns_{0}, measureDetectNs_{0};
+  std::atomic<float> measureBaseline_{0.0f}, measureThreshold_{0.01f};
   bool captureInit_ = false, playbackInit_ = false, monitorInit_ = false, loopbackInit_ = false;
   ma_uint32 frames_ = 240;
   ma_device_id outputId_{};
@@ -729,10 +786,7 @@ void handle(Engine& engine, const json& j, bool& quit) {
     if (!engine.play(j.value("path", ""), gainDb, err)) return emitError(err, id);
     reply({{"event", "played"}});
   } else if (cmd == "measure") {
-    json r = engine.measure(err);
-    if (!err.empty()) return emitError(err, id);
-    r["event"] = "measured";
-    reply(r);
+    if (!engine.startMeasure(id, err)) return emitError(err, id);  // the result is sent later, from the measuring thread
   } else if (cmd == "stopSounds") {
     engine.stopSounds();
   } else if (cmd == "quit") {

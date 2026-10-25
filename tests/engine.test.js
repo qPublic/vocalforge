@@ -14,6 +14,9 @@ const EXE = path.join(__dirname, '..', 'engine', 'build', 'engine.exe');
 const built = fs.existsSync(EXE);
 const opts = built ? {} : { skip: 'engine.exe is not built (run npm run build:engine)' };
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vf-engine-'));
+// An assertion that fails before a test closes its engine must not leave the process running.
+const liveEngines = new Set();
+test.after(() => liveEngines.forEach((p) => p.kill()));
 
 // Runs a mono Float32Array through the native chain (offline mode).
 function nativeProcess(input, values = {}) {
@@ -136,6 +139,8 @@ test('out-of-range settings are clamped instead of breaking the audio', opts, ()
 class EngineProcess {
   constructor(args = ['--backend', 'null']) {
     this.proc = spawn(EXE, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    liveEngines.add(this.proc);
+    this.proc.on('exit', () => liveEngines.delete(this.proc));
     this.events = [];
     this.waiters = [];
     this.exited = new Promise((resolve) => this.proc.on('exit', (code) => resolve(code)));

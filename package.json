@@ -1,13 +1,13 @@
 {
   "name": "vocalforge",
-  "version": "0.1.0-beta.17",
+  "version": "0.1.0-beta.18",
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
     "start": "node scripts/start.js",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
-    "test": "node --test tests/*.test.js",
+    "test": "node --test --test-force-exit --test-timeout=120000 tests/*.test.js",
     "build:engine": "node scripts/build-engine.js"
   },
   "license": "MIT",

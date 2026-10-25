@@ -164,7 +164,7 @@ function downloadText(filename, text) {
 $('exportBtn').addEventListener('click', () => {
   const picked = $('presetSel').value;
   const name = picked && picked !== '(custom)' ? picked : $('presetName').value.trim() || 'My preset';
-  downloadText(cleanPresetName(name).replace(/[^\w .()-]/g, '_') + '.vfpreset', serializePreset(name, engine.values, FLAT));
+  downloadText(presetFileName(name), serializePreset(name, engine.values, FLAT));
   toast('Preset exported.');
 });
 $('importBtn').addEventListener('click', () => $('importFile').click());
@@ -396,14 +396,14 @@ async function setupGeneral() {
       $('measureBtn').disabled = false;
     }
   });
-  $('optBuffer').value = String(store.nativeBuffer || 240);
+  $('optBuffer').value = String(NATIVE_BUFFER_CHOICES.includes(Number(store.nativeBuffer)) ? Number(store.nativeBuffer) : 240);
   $('optBuffer').disabled = !nativeCfg.available;
   $('optNative').addEventListener('change', (e) => {
     window.vf.setSettings({ nativeEngine: e.target.checked });
     $('nativeNote').textContent = 'Restart VocalForge to switch engines.';
   });
   $('optBuffer').addEventListener('change', (e) => {
-    store.nativeBuffer = Number(e.target.value);
+    store.nativeBuffer = NATIVE_BUFFER_CHOICES.includes(Number(e.target.value)) ? Number(e.target.value) : 240;
     persist();
     $('nativeNote').textContent = running ? 'Press Stop then Start to apply the new buffer size.' : '';
   });

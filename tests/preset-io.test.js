@@ -69,3 +69,25 @@ test('a taken name gets a numbered suffix that still fits the length limit', () 
   const next = io.uniquePresetName(long, new Set([long]));
   assert.ok(next.length <= io.MAX_PRESET_NAME && next.endsWith('(2)'), next);
 });
+
+test('names that are already properties of every object are refused', () => {
+  for (const bad of ['hasOwnProperty', 'valueOf', 'isPrototypeOf', '__defineGetter__', 'toLocaleString', 'propertyIsEnumerable']) {
+    assert.equal(io.cleanPresetName(bad), '', bad);
+  }
+  assert.equal(io.cleanPresetName('valueOf extra'), 'valueOf extra', 'only the exact names are refused');
+  const doc = { format: io.PRESET_FORMAT, version: 1, name: 'hasOwnProperty', values: { inGain: 1 } };
+  assert.equal(io.parsePreset(JSON.stringify(doc), FLAT).name, 'Imported preset');
+});
+
+test('export file names are safe and never empty', () => {
+  assert.equal(io.presetFileName('Warm podcast'), 'Warm podcast.vfpreset');
+  assert.equal(io.presetFileName('CON'), '_CON.vfpreset');
+  assert.equal(io.presetFileName('nul'), '_nul.vfpreset');
+  assert.equal(io.presetFileName('lpt1'), '_lpt1.vfpreset');
+  assert.equal(io.presetFileName(''), 'preset.vfpreset');
+  assert.equal(io.presetFileName('...'), 'preset.vfpreset');
+  assert.equal(io.presetFileName('  . '), 'preset.vfpreset');
+  assert.equal(io.presetFileName('__proto__'), 'preset.vfpreset');
+  assert.equal(io.presetFileName('a/b\\c:d*e?f"g|h'), 'a_b_c_d_e_f_g_h.vfpreset');
+  assert.equal(io.presetFileName('Caf\u00e9 voice'), 'Caf\u00e9 voice.vfpreset');
+});

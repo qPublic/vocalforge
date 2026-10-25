@@ -1,3 +1,6 @@
+// Buffer sizes the Settings list offers; anything else saved is ignored.
+const NATIVE_BUFFER_CHOICES = [128, 240, 480, 960];
+
 // Drop-in replacement for Engine (engine.js) that drives the native engine.exe over the main process.
 // It exposes the same methods and properties, so app.js, the soundboard and the desktop-audio code
 // work with either engine unchanged. Relies on globals from engine.js: defaults().
@@ -63,7 +66,8 @@ class NativeEngine {
         this.onGate(e.gate);
         break;
       case 'error':
-        this.onError(e.message);
+        // An error that carries an id answers a call that already timed out or was cancelled.
+        if (e.id == null) this.onError(e.message);
         break;
       case 'exited': {
         const wasRunning = this.running;
@@ -91,7 +95,8 @@ class NativeEngine {
 
   async start({ inputId, outputId, monitorId, monitor }) {
     await this.stop();
-    const frames = Number((typeof store !== 'undefined' && store.nativeBuffer) || 240);
+    const saved = Number(typeof store !== 'undefined' && store.nativeBuffer);
+    const frames = NATIVE_BUFFER_CHOICES.includes(saved) ? saved : 240;
     await this._call({
       cmd: 'start',
       input: inputId || 'default',

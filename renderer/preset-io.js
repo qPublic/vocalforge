@@ -15,7 +15,16 @@ function cleanPresetName(raw) {
     .trim()
     .slice(0, MAX_PRESET_NAME)
     .trim();
-  return RESERVED_NAMES.has(name) ? '' : name;
+  // Also refuses anything that is already a property of every object (hasOwnProperty, valueOf, ...).
+  return RESERVED_NAMES.has(name) || name in Object.prototype ? '' : name;
+}
+
+// A safe file name for an exported preset: no path or device-name tricks, and never empty.
+function presetFileName(name) {
+  let base = cleanPresetName(name).replace(/[^\p{L}\p{N} _.()-]/gu, '_').replace(/^[ .]+|[ .]+$/g, '');
+  if (!base) base = 'preset';
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(base)) base = '_' + base;
+  return base + '.vfpreset';
 }
 
 // A name that is not already taken: "Name", then "Name (2)", "Name (3)", ...
@@ -67,4 +76,4 @@ function parsePreset(text, params) {
   return { ok: true, name: cleanPresetName(doc.name) || 'Imported preset', values, ignored };
 }
 
-if (typeof module !== 'undefined') module.exports = { PRESET_FORMAT, MAX_PRESET_BYTES, MAX_PRESET_NAME, MAX_USER_PRESETS, cleanPresetName, uniquePresetName, serializePreset, parsePreset };
+if (typeof module !== 'undefined') module.exports = { PRESET_FORMAT, MAX_PRESET_BYTES, MAX_PRESET_NAME, MAX_USER_PRESETS, cleanPresetName, presetFileName, uniquePresetName, serializePreset, parsePreset };

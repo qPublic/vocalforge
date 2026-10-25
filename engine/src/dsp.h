@@ -227,6 +227,8 @@ class Denoise {
   Denoise(const Denoise&) = delete;
   Denoise& operator=(const Denoise&) = delete;
 
+  // Switching on starts with one silent frame (the delayed wet path has nothing yet), exactly as the web
+  // worklet does, so the two engines behave the same. It is a 10 ms gap at the moment of the switch.
   void process(float* x, int n, bool on, double wet = 1.0) {
     if (!on || !state_) {
       if (active_) reset_();
@@ -285,8 +287,9 @@ class Chain {
     first_ = false;
   }
   void setMuted(bool m) { muted_ = m; }
-  // The latency test plays a click, which RNNoise would treat as noise and remove.
-  void setBypassNoise(bool b) { bypassNoise_ = b; }
+  // While the delay test runs, its click must pass untouched: RNNoise would remove it as noise, and a closed
+  // gate or a muted output would hide it. None of these stages adds delay of its own (RNNoise's 10 ms is added back).
+  void setMeasuring(bool b) { measuring_ = b; }
   const Meters& meters() const { return meters_; }
   double inLevelDb() const { return meters_.inDb; }
 
@@ -313,7 +316,8 @@ class Chain {
 
   void block_(const float* in, float* out, int n, const float* extra) {
     const double glide = 1 - std::exp(-(double)n / (kRate * 0.015));
-    const double tInG = dbToLin(target_.inGain), tOutG = muted_ ? 0 : dbToLin(target_.outGain);
+    const bool silent = muted_ && !measuring_.load(std::memory_order_relaxed);
+    const double tInG = dbToLin(target_.inGain), tOutG = silent ? 0 : dbToLin(target_.outGain);
     inG_ += (tInG - inG_) * glide;
     outG_ += (tOutG - outG_) * glide;
     const double tEq[4] = {target_.eqOn ? target_.eqLow : 0, target_.eqOn ? target_.eqMud : 0,
@@ -335,8 +339,8 @@ class Chain {
       inPeak = std::max(inPeak, std::fabs((double)x[i]));
     }
     for (int i = 0; i < n; i++) x[i] = (float)hp_.process(x[i]);
-    dn_.process(x, n, cur_.nsOn && !bypassNoise_.load(std::memory_order_relaxed), cur_.nsAmt / 100.0);
-    gate_.process(x, n, cur_);
+    dn_.process(x, n, cur_.nsOn && !measuring_.load(std::memory_order_relaxed), cur_.nsAmt / 100.0);
+    if (!measuring_.load(std::memory_order_relaxed)) gate_.process(x, n, cur_);
     for (int i = 0; i < n; i++) {
       double v = x[i];
       v = low_.process(v);
@@ -364,7 +368,7 @@ class Chain {
 
   Params target_, cur_;
   bool first_ = true, muted_ = false;
-  std::atomic<bool> bypassNoise_{false};
+  std::atomic<bool> measuring_{false};
   double inG_ = 1, outG_ = 1, hpf_ = 80, eq_[4] = {0, 0, 0, 0};
   Biquad hp_, low_, mud_, pres_, air_;
   Denoise dn_;

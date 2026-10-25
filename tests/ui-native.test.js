@@ -216,3 +216,23 @@ test('native mode: the Measure my delay button reports the engine\'s numbers', a
   assert.equal($('measureBtn').disabled, false);
   window.close();
 });
+
+test('native mode: a late error for a call that already finished is ignored, one without an id is shown', async () => {
+  const { window, emitEngine, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  emitEngine({ event: 'error', message: 'stale answer', id: 987654 });
+  await settle(20);
+  assert.doesNotMatch(window.document.getElementById('toast').textContent, /stale answer/);
+  emitEngine({ event: 'error', message: 'real problem' });
+  await settle(20);
+  assert.match(window.document.getElementById('toast').textContent, /real problem/);
+  window.close();
+});
+
+test('native mode: a saved buffer size that is not one of the choices falls back to 240', async () => {
+  const { window, engineLog, settle } = await loadApp({ native: true, store: { ...SKIP_WIZARD, nativeBuffer: 1 } });
+  assert.equal(window.document.getElementById('optBuffer').value, '240');
+  window.document.getElementById('startBtn').click();
+  await settle(60);
+  assert.equal(cmds(engineLog, 'start')[0].bufferFrames, 240);
+  window.close();
+});
