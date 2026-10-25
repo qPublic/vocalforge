@@ -371,3 +371,53 @@ test('soundboard: per-clip volume is saved, never above 0 dB, and applies to pre
   assert.equal(JSON.parse(window.localStorage.getItem('vocalforge.v1')).clipDb['ding.wav'], undefined);
   window.close();
 });
+
+test('quick tour: opens from Settings, walks the steps, and Escape ends it for good', async () => {
+  const { window, settle } = await loadApp({ store: SKIP_WIZARD });
+  const $ = (id) => window.document.getElementById(id);
+  assert.equal(window.document.querySelector('.tour'), null, 'existing users are not interrupted');
+  $('tourBtn').click();
+  await settle();
+  const card = () => window.document.querySelector('.tour-card');
+  assert.ok(card(), 'the tour card is shown');
+  assert.match(card().textContent, /1 of 6/);
+  assert.match(card().textContent, /Pick your devices/);
+  window.document.querySelector('.tour-next').click();
+  assert.match(card().textContent, /2 of 6/);
+  window.document.querySelector('.tour-back').click();
+  assert.match(card().textContent, /1 of 6/);
+  for (let i = 0; i < 5; i++) window.document.querySelector('.tour-next').click();
+  assert.match(card().textContent, /6 of 6/);
+  assert.equal(window.document.querySelector('.tour-next').textContent, 'Done');
+  window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+  assert.equal(window.document.querySelector('.tour'), null);
+  assert.equal(JSON.parse(window.localStorage.getItem('vocalforge.v1')).tourDone, true);
+  window.close();
+});
+
+test('first run: finishing the wizard can turn on start-with-Windows, then shows the tour once', async () => {
+  const { window, calls, settle } = await loadApp();
+  const next = () => window.document.querySelector('.wz-next');
+  for (let i = 0; i < 10 && next().textContent !== 'Start mixing'; i++) {
+    next().click();
+    await settle();
+  }
+  const login = window.document.getElementById('wzLogin');
+  assert.ok(login, 'the last step offers start with Windows');
+  assert.equal(login.checked, false, 'it is opt-in');
+  login.checked = true;
+  login.dispatchEvent(new window.Event('change'));
+  next().click();
+  await settle(200);
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && c[1].launchAtLogin === true));
+  assert.ok(window.document.querySelector('.tour-card'), 'the tour starts after setup');
+  window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+  window.close();
+
+  // A preview of the wizard changes nothing and offers neither the checkbox nor the tour.
+  const again = await loadApp({ store: SKIP_WIZARD });
+  again.window.document.getElementById('previewWizBtn').click();
+  await again.settle();
+  assert.equal(again.window.document.getElementById('wzLogin'), null);
+  again.window.close();
+});

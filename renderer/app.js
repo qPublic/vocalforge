@@ -419,6 +419,10 @@ function setupSettings() {
     note('');
     dlg.showModal();
   });
+  $('tourBtn').addEventListener('click', () => {
+    dlg.close();
+    Tour.start();
+  });
   $('runSetupBtn').addEventListener('click', () => {
     dlg.close();
     Wizard.open();

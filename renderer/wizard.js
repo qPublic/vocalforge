@@ -38,6 +38,7 @@ const Wizard = (() => {
       out: $('outSel').value,
       monitor: $('monChk').checked,
       preset: allPresets()[store.last] ? store.last : 'Clean voice (default)',
+      login: false,
     };
     el = document.createElement('div');
     el.className = 'wz-backdrop';
@@ -95,9 +96,11 @@ const Wizard = (() => {
       $('monChk').checked = choice.monitor;
       refreshPresets(choice.preset);
       applyPreset(choice.preset);
+      if (choice.login) window.vf.setSettings({ launchAtLogin: true });
     }
     close();
     if (!preview && !running) await toggle();
+    if (!preview) Tour.maybeStart();
   }
 
   function render() {
@@ -159,7 +162,8 @@ const Wizard = (() => {
         <li><span>Output</span><b>${esc(label('outSel', choice.out))}</b></li>
         <li><span>Sound</span><b>${esc(choice.preset)}</b></li>
       </ul>
-      <p class="lead">${preview ? 'This was a preview. Your settings were not changed.' : 'Press Start mixing to turn it on. You can change any of this later.'}</p>`;
+      <p class="lead">${preview ? 'This was a preview. Your settings were not changed.' : 'Press Start mixing to turn it on. You can change any of this later.'}</p>
+      ${preview ? '' : '<label class="wz-check"><input type="checkbox" id="wzLogin"> Start VocalForge when Windows starts <small>(opens hidden in the tray)</small></label>'}`;
     },
   };
 
@@ -171,6 +175,10 @@ const Wizard = (() => {
         startMeter(body);
       };
       startMeter(body);
+    },
+    done(body) {
+      const box = body.querySelector('#wzLogin');
+      if (box) box.onchange = (e) => (choice.login = e.target.checked);
     },
     output(body) {
       body.querySelector('#wzOut').onchange = (e) => (choice.out = e.target.value);
