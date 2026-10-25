@@ -82,3 +82,18 @@ test('suggest: rumble raises the high-pass and every value stays in its slider r
     }
   }
 });
+
+test('suggest: a natural, in-the-room sound: slow gate, gentle compression, small EQ moves', () => {
+  const steady = suggest(analyze(session())).values;
+  assert.ok(steady.gateRel >= 0.25, 'the gate lets words decay');
+  assert.ok(steady.compRatio <= 3 && steady.compAtk >= 0.012, 'compression is gentle and keeps word onsets');
+  const extreme = suggest(analyze(session({ rel: { mud: 20, pres: -30, low: 15, air: -40 } }))).values;
+  for (const k of ['eqLow', 'eqMud', 'eqPres', 'eqAir']) assert.ok(Math.abs(extreme[k]) <= 6, `${k} ${extreme[k]}`);
+  assert.ok(extreme.eqPres <= 5 && extreme.eqAir <= 4);
+});
+
+test('suggest: a voice that varies a lot gets a little more compression than a steady one', () => {
+  const varied = analyze({ ...session(), speech: many(120, (i) => frame(i % 5 === 0 ? -14 : -34, -40)) });
+  const steady = analyze(session());
+  assert.ok(suggest(varied).values.compRatio > suggest(steady).values.compRatio);
+});

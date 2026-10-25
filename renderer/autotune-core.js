@@ -80,22 +80,31 @@ function suggest(a) {
   const loud = a.speechLoudDb + inGain;
   const median = a.speechMedianDb + inGain;
 
-  const gateThr = clamp(round1(Math.min(noise + 10, median - 14)), -70, -30);
+  // The aim is a voice that sounds like it is in the room with the listener: transparent processing, room tone
+  // and the tails of words left alone, small corrections rather than a "radio" sound.
+  const gateThr = clamp(round1(Math.min(noise + 8, median - 18)), -70, -30);
+  const gateRel = 0.3; // a slow close lets words and the room decay naturally instead of chopping them
   const hpfFreq = a.rel.rumble > -12 ? 120 : a.rel.rumble > -20 ? 100 : 80;
 
-  const eqLow = clamp(round05(0.5 * (TARGET_REL.low - a.rel.low)), -6, 6);
-  const eqMud = clamp(round05(0.5 * (TARGET_REL.mud - a.rel.mud)), -8, 3);
-  const eqPres = clamp(round05(0.5 * (TARGET_REL.pres - a.rel.pres)), -3, 9);
-  const eqAir = clamp(round05(0.5 * (TARGET_REL.air - a.rel.air)), -3, 9);
+  const EQ_STEP = 0.4; // part of the way to the target curve, so the voice stays itself
+  const eqLow = clamp(round05(EQ_STEP * (TARGET_REL.low - a.rel.low)), -4, 4);
+  const eqMud = clamp(round05(EQ_STEP * (TARGET_REL.mud - a.rel.mud)), -6, 2);
+  const eqPres = clamp(round05(EQ_STEP * (TARGET_REL.pres - a.rel.pres)), -2, 5);
+  const eqAir = clamp(round05(EQ_STEP * (TARGET_REL.air - a.rel.air)), -2, 4);
 
   const sibExcess = a.rel.sib - a.rel.pres; // per-bin sibilance relative to presence
   const deessThr = clamp(round1(loud - 10 - (sibExcess > 3 ? 4 : 0)), -45, -20); // -32 for a normal voice
-  const deessAmt = sibExcess > 4 ? 10 : sibExcess > 1 ? 8 : 6;
+  const deessAmt = sibExcess > 4 ? 9 : sibExcess > 1 ? 7 : 5;
 
-  const compThr = clamp(round1(loud - 8), -40, -12);
-  const compRatio = 3.5;
-  const makeup = clamp(round05((-compThr * (1 - 1 / compRatio)) / 2), 0, 12);
+  // Gentle leveling: only the peaks are reined in, and the more your voice already varies, the more it helps.
+  const spread = clamp(a.speechLoudDb - a.speechMedianDb, 0, 16);
+  const compThr = clamp(round1(loud - 6), -40, -12);
+  const compRatio = round05(clamp(2 + spread / 8, 2, 3));
+  const compAtk = 0.015; // slow enough that the start of each word comes through untouched
+  const compRel = 0.25;
+  const makeup = clamp(round05((-compThr * (1 - 1 / compRatio)) / 2.5), 0, 8);
 
+  notes.push('Tuned for a natural, in-the-room sound: gentle compression, small EQ moves and a slow gate.');
   notes.push(`Noise floor ${a.noiseFloorDb.toFixed(0)} dB, voice ${a.speechMedianDb.toFixed(0)} dB: gate set to ${gateThr} dB.`);
   notes.push(`Input gain ${inGain >= 0 ? '+' : ''}${inGain} dB to bring your voice to a healthy level.`);
   if (a.snrDb < 18) notes.push('Your room is fairly noisy. Try the "Noisy room" preset or turn on Noise suppression.');
@@ -105,7 +114,7 @@ function suggest(a) {
   if (hpfFreq > 80) notes.push(`Low rumble detected: high-pass raised to ${hpfFreq} Hz.`);
 
   return {
-    values: { inGain, gateThr, hpfFreq, eqLow, eqMud, eqPres, eqAir, deessThr, deessAmt, compThr, compRatio, makeup },
+    values: { inGain, gateThr, gateRel, hpfFreq, eqLow, eqMud, eqPres, eqAir, deessThr, deessAmt, compThr, compRatio, compAtk, compRel, makeup },
     notes,
   };
 }
