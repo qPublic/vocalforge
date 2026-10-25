@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const settings = require('../lib/settings');
 
-const D = { nativeEngine: false, gameOnlyHotkeys: false, gameNeedsHiddenCursor: true, gameList: [...settings.DEFAULTS.gameList] };
+const D = { nativeEngine: true, gameOnlyHotkeys: false, gameNeedsHiddenCursor: true, gameList: [...settings.DEFAULTS.gameList] };
 
 test('settings: defaults, sanitizing, and round trip', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vf-settings-'));

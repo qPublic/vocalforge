@@ -459,3 +459,24 @@ test('Settings has a Restart VocalForge button that asks the main process to res
   assert.equal(btn.disabled, true, 'it cannot be pressed twice');
   window.close();
 });
+
+test('Settings closes when you click outside it, but not inside it or when a drag ends outside', async () => {
+  const { window, errors } = await loadApp({ store: SKIP_WIZARD });
+  const dlg = window.document.getElementById('settings');
+  dlg.getBoundingClientRect = () => ({ left: 100, right: 500, top: 50, bottom: 450 });
+  const mouse = (type, target, x, y) => target.dispatchEvent(new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y }));
+  const press = (target, x, y) => { mouse('mousedown', target, x, y); mouse('mouseup', target, x, y); mouse('click', target, x, y); };
+
+  window.document.getElementById('settingsBtn').click();
+  press(dlg, 300, 200); // the dialog's own padding
+  assert.ok(dlg.open, 'a click inside stays open');
+  press(dlg.querySelector('button'), 600, 600); // lands on a control
+  assert.ok(dlg.open, 'a click on a control stays open');
+  mouse('mousedown', dlg.querySelector('label'), 300, 200); // text selection that ends outside
+  mouse('click', dlg, 700, 700);
+  assert.ok(dlg.open, 'a drag that ends outside stays open');
+  press(dlg, 700, 700);
+  assert.ok(!dlg.open, 'a click on the dimmed area closes it');
+  assert.deepEqual(errors, []);
+  window.close();
+});

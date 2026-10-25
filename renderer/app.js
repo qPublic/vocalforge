@@ -437,6 +437,18 @@ function setupSettings() {
     note('');
     dlg.showModal();
   });
+  // A click on the dimmed area outside the dialog closes it. Both the press and the release must land outside,
+  // so selecting text and letting go past the edge does not close it.
+  const outside = (e) => {
+    const r = dlg.getBoundingClientRect();
+    return e.target === dlg && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+  };
+  let pressedOutside = false;
+  dlg.addEventListener('mousedown', (e) => (pressedOutside = outside(e)));
+  dlg.addEventListener('click', (e) => {
+    if (pressedOutside && outside(e)) dlg.close();
+    pressedOutside = false;
+  });
   $('restartBtn').addEventListener('click', () => {
     $('restartBtn').disabled = true;
     $('restartBtn').textContent = 'Restarting…';
