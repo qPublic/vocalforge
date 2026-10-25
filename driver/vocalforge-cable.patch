@@ -1,0 +1,279 @@
+diff --git a/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj b/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj
+index c1ba8b1..cbff7cc 100644
+--- a/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj
++++ b/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj
+@@ -187,6 +187,7 @@
+     <ClCompile Include="mintopo.cpp" />
+     <ClCompile Include="minwavert.cpp" />
+     <ClCompile Include="minwavertstream.cpp" />
++    <ClCompile Include="loopback.cpp" />
+     <ClCompile Include="NewDelete.cpp" />
+     <ClCompile Include="speakerhptopo.cpp" />
+     <ClCompile Include="speakertopo.cpp" />
+diff --git a/audio/sysvad/EndpointsCommon/loopback.cpp b/audio/sysvad/EndpointsCommon/loopback.cpp
+new file mode 100644
+index 0000000..62f8f3b
+--- /dev/null
++++ b/audio/sysvad/EndpointsCommon/loopback.cpp
+@@ -0,0 +1,132 @@
++// VocalForge Cable loopback ring. Everything here runs at DISPATCH_LEVEL or below, so the buffer and the
++// lock live in non-paged memory and no floating point is used. Only 48 kHz streams are bridged: both
++// endpoints only advertise 48 kHz, and anything else is treated as silence rather than played at the
++// wrong speed.
++#include "loopback.h"
++
++#define LOOPBACK_RATE        48000
++#define RING_FRAMES          16384          // power of two; about 340 ms
++#define RING_MASK            (RING_FRAMES - 1)
++#define TARGET_LATENCY       1920           // 40 ms: where the reader settles after catching up
++#define MAX_LATENCY          4800           // 100 ms: beyond this the reader skips ahead
++
++struct LoopbackFrame { LONG left; LONG right; };
++
++static LoopbackFrame g_Ring[RING_FRAMES];
++static ULONG g_Head = 0;                    // next frame to write (free running)
++static ULONG g_Tail = 0;                    // next frame to read (free running)
++static KSPIN_LOCK g_Lock;
++
++VOID LoopbackInit()
++{
++    KeInitializeSpinLock(&g_Lock);
++    g_Head = g_Tail = 0;
++    RtlZeroMemory(g_Ring, sizeof(g_Ring));
++}
++
++VOID LoopbackReset()
++{
++    KIRQL irql;
++    KeAcquireSpinLock(&g_Lock, &irql);
++    g_Head = g_Tail = 0;
++    KeReleaseSpinLock(&g_Lock, irql);
++}
++
++// One sample of the given container size as a signed 32-bit value, left aligned.
++static inline LONG ReadSample(const UCHAR* p, USHORT bits)
++{
++    switch (bits)
++    {
++    case 16: return (LONG)((ULONG)(USHORT)(p[0] | (p[1] << 8)) << 16);
++    case 24: return (LONG)(((ULONG)p[0] << 8) | ((ULONG)p[1] << 16) | ((ULONG)p[2] << 24));
++    case 32: return (LONG)((ULONG)p[0] | ((ULONG)p[1] << 8) | ((ULONG)p[2] << 16) | ((ULONG)p[3] << 24));
++    default: return 0;
++    }
++}
++
++static inline VOID WriteSample(UCHAR* p, USHORT bits, LONG v)
++{
++    switch (bits)
++    {
++    case 16: p[0] = (UCHAR)((ULONG)v >> 16); p[1] = (UCHAR)((ULONG)v >> 24); break;
++    case 24: p[0] = (UCHAR)((ULONG)v >> 8); p[1] = (UCHAR)((ULONG)v >> 16); p[2] = (UCHAR)((ULONG)v >> 24); break;
++    case 32: p[0] = (UCHAR)v; p[1] = (UCHAR)((ULONG)v >> 8); p[2] = (UCHAR)((ULONG)v >> 16); p[3] = (UCHAR)((ULONG)v >> 24); break;
++    default: break;
++    }
++}
++
++static inline BOOLEAN SupportedFormat(USHORT channels, USHORT bits, ULONG rate)
++{
++    return rate == LOOPBACK_RATE && channels >= 1 && (bits == 16 || bits == 24 || bits == 32);
++}
++
++VOID LoopbackWrite(const UCHAR* Data, ULONG ByteCount, USHORT Channels, USHORT ContainerBits, ULONG SampleRate)
++{
++    if (!SupportedFormat(Channels, ContainerBits, SampleRate)) return;
++
++    const ULONG sampleBytes = ContainerBits / 8;
++    const ULONG frameBytes = sampleBytes * Channels;
++    ULONG frames = ByteCount / frameBytes;
++
++    KIRQL irql;
++    KeAcquireSpinLock(&g_Lock, &irql);
++    for (ULONG i = 0; i < frames; i++)
++    {
++        const UCHAR* f = Data + (SIZE_T)i * frameBytes;
++        LONG l = ReadSample(f, ContainerBits);
++        LONG r = (Channels > 1) ? ReadSample(f + sampleBytes, ContainerBits) : l;
++        LoopbackFrame& slot = g_Ring[g_Head & RING_MASK];
++        slot.left = l;
++        slot.right = r;
++        g_Head++;
++    }
++    // A reader that fell behind loses the oldest audio instead of the newest.
++    if (g_Head - g_Tail > RING_FRAMES) g_Tail = g_Head - RING_FRAMES;
++    KeReleaseSpinLock(&g_Lock, irql);
++}
++
++VOID LoopbackRead(UCHAR* Data, ULONG ByteCount, USHORT Channels, USHORT ContainerBits, ULONG SampleRate)
++{
++    if (!SupportedFormat(Channels, ContainerBits, SampleRate))
++    {
++        RtlZeroMemory(Data, ByteCount);
++        return;
++    }
++
++    const ULONG sampleBytes = ContainerBits / 8;
++    const ULONG frameBytes = sampleBytes * Channels;
++    const ULONG frames = ByteCount / frameBytes;
++
++    KIRQL irql;
++    KeAcquireSpinLock(&g_Lock, &irql);
++
++    // Keep the delay small: if the writer got far ahead, jump forward to the target delay.
++    ULONG waiting = g_Head - g_Tail;
++    if (waiting > MAX_LATENCY) g_Tail = g_Head - TARGET_LATENCY;
++
++    for (ULONG i = 0; i < frames; i++)
++    {
++        UCHAR* f = Data + (SIZE_T)i * frameBytes;
++        LONG l = 0, r = 0;
++        if (g_Tail != g_Head)
++        {
++            const LoopbackFrame& slot = g_Ring[g_Tail & RING_MASK];
++            l = slot.left;
++            r = slot.right;
++            g_Tail++;
++        }
++        for (USHORT c = 0; c < Channels; c++)
++        {
++            LONG v = 0;
++            if (Channels == 1) v = (LONG)(((LONGLONG)l + (LONGLONG)r) / 2);
++            else if (c == 0) v = l;
++            else if (c == 1) v = r;
++            WriteSample(f + (SIZE_T)c * sampleBytes, ContainerBits, v);
++        }
++    }
++    // Any bytes that do not make a whole frame stay silent.
++    const ULONG used = frames * frameBytes;
++    if (used < ByteCount) RtlZeroMemory(Data + used, ByteCount - used);
++
++    KeReleaseSpinLock(&g_Lock, irql);
++}
+diff --git a/audio/sysvad/EndpointsCommon/loopback.h b/audio/sysvad/EndpointsCommon/loopback.h
+new file mode 100644
+index 0000000..f4f469f
+--- /dev/null
++++ b/audio/sysvad/EndpointsCommon/loopback.h
+@@ -0,0 +1,19 @@
++// VocalForge Cable: shared loopback between the render (speaker) and capture (microphone) endpoints.
++// Audio the system plays to the speaker side is handed to whoever records from the microphone side.
++#pragma once
++
++#include <ntddk.h>
++
++// Call once from DriverEntry / driver unload.
++VOID LoopbackInit();
++
++// Drops any audio waiting in the ring (stream stop, or a new render stream starting).
++VOID LoopbackReset();
++
++// Render side: `bytes` of interleaved PCM in the stream's own format.
++VOID LoopbackWrite(_In_reads_bytes_(ByteCount) const UCHAR* Data, _In_ ULONG ByteCount,
++                   _In_ USHORT Channels, _In_ USHORT ContainerBits, _In_ ULONG SampleRate);
++
++// Capture side: fills `ByteCount` bytes in the stream's own format; silence when nothing is waiting.
++VOID LoopbackRead(_Out_writes_bytes_(ByteCount) UCHAR* Data, _In_ ULONG ByteCount,
++                  _In_ USHORT Channels, _In_ USHORT ContainerBits, _In_ ULONG SampleRate);
+diff --git a/audio/sysvad/EndpointsCommon/minwavertstream.cpp b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
+index adea0c8..31a0c19 100644
+--- a/audio/sysvad/EndpointsCommon/minwavertstream.cpp
++++ b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
+@@ -6,6 +6,7 @@
+ #include "minwavertstream.h"
+ #include "UnittestData.h"
+ #include "AudioModuleHelper.h"
++#include "loopback.h"
+ #define MINWAVERTSTREAM_POOLTAG 'SRWM'
+ 
+ #pragma warning (disable : 4127)
+@@ -1211,6 +1212,12 @@ NTSTATUS CMiniportWaveRTStream::SetState
+ 
+             KeReleaseSpinLock(&m_PositionSpinLock, oldIrql);
+ 
++            // A stopped render stream leaves nothing behind for the microphone side to replay.
++            if (!m_bCapture)
++            {
++                LoopbackReset();
++            }
++
+             // Wait until all work items are completed.
+             if (!m_bCapture && !g_DoNotCreateDataFiles)
+             {
+@@ -1469,11 +1476,8 @@ VOID CMiniportWaveRTStream::UpdatePosition
+                                         0);
+         }
+ 
+-        if (!g_DoNotCreateDataFiles)
+-        {
+-            // Read from buffer and write to a file.
+-            ReadBytes(ByteDisplacement);
+-        }
++        // Hand what the system played to the capture side (VocalForge Cable loopback).
++        ReadBytes(ByteDisplacement);
+     }
+     
+     // Increment the DMA position by the number of bytes displaced since the last
+@@ -1516,7 +1520,8 @@ ByteDisplacement - # of bytes to process.
+     while (ByteDisplacement > 0)
+     {
+         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
+-            m_ToneGenerator.GenerateSine(m_pDmaBuffer + bufferOffset, runWrite);
++        LoopbackRead(m_pDmaBuffer + bufferOffset, runWrite, m_pWfExt->Format.nChannels,
++                     m_pWfExt->Format.wBitsPerSample, m_pWfExt->Format.nSamplesPerSec);
+         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
+         ByteDisplacement -= runWrite;
+     }
+@@ -1547,7 +1552,8 @@ ByteDisplacement - # of bytes to process.
+     while (ByteDisplacement > 0)
+     {
+         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
+-        m_SaveData.WriteData(m_pDmaBuffer + bufferOffset, runWrite);
++        LoopbackWrite(m_pDmaBuffer + bufferOffset, runWrite, m_pWfExt->Format.nChannels,
++                      m_pWfExt->Format.wBitsPerSample, m_pWfExt->Format.nSamplesPerSec);
+         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
+         ByteDisplacement -= runWrite;
+     }
+diff --git a/audio/sysvad/TabletAudioSample/minipairs.h b/audio/sysvad/TabletAudioSample/minipairs.h
+index 0d00f5a..4ec4f8e 100644
+--- a/audio/sysvad/TabletAudioSample/minipairs.h
++++ b/audio/sysvad/TabletAudioSample/minipairs.h
+@@ -510,9 +510,6 @@ static
+ PENDPOINT_MINIPAIR  g_RenderEndpoints[] = 
+ {
+     &SpeakerMiniports,
+-    &SpeakerHpMiniports,
+-    &HdmiMiniports,
+-    &SpdifMiniports,
+ };
+ 
+ #define g_cRenderEndpoints  (SIZEOF_ARRAY(g_RenderEndpoints))
+@@ -525,9 +522,6 @@ static
+ PENDPOINT_MINIPAIR  g_CaptureEndpoints[] = 
+ {
+     &MicInMiniports,
+-    &MicArray1Miniports,
+-    &MicArray2Miniports,
+-    &MicArray3Miniports,
+ };
+ 
+ #define g_cCaptureEndpoints (SIZEOF_ARRAY(g_CaptureEndpoints))
+diff --git a/audio/sysvad/adapter.cpp b/audio/sysvad/adapter.cpp
+index 0f44c59..f546c72 100644
+--- a/audio/sysvad/adapter.cpp
++++ b/audio/sysvad/adapter.cpp
+@@ -25,6 +25,7 @@ Abstract:
+ #include "IHVPrivatePropertySet.h"
+ 
+ #include "simple.h"
++#include "loopback.h"
+ #include "minipairs.h"
+ #ifdef SYSVAD_BTH_BYPASS
+ #include "bthhfpminipairs.h"
+@@ -528,6 +529,8 @@ Return Value:
+ 
+     DPF(D_TERSE, ("[DriverEntry]"));
+ 
++    LoopbackInit();
++
+     // Copy registry Path name in a global variable to be used by modules inside driver.
+     // !! NOTE !! Inside this function we are initializing the registrypath, so we MUST NOT add any failing calls
+     // before the following call.

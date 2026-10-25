@@ -1,0 +1,139 @@
+; VocalForge Cable: a virtual speaker and microphone. Whatever Windows plays to "VocalForge Cable" speakers
+; comes out of the "VocalForge Mic" microphone. Derived from Microsoft's SYSVAD sample (MS-PL).
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = MEDIA
+ClassGUID   = {4d36e96c-e325-11ce-bfc1-08002be10318}
+Provider    = %ProviderName%
+CatalogFile = VocalForgeCable.cat
+DriverVer   = 10/24/2026,1.0.0.0
+PnpLockDown = 1
+
+[SourceDisksNames]
+1 = "VocalForge Cable","",1
+
+[SourceDisksFiles]
+VocalForgeCable.sys = 1
+
+[DestinationDirs]
+VFCable.CopyList = 13
+
+[VFCable.CopyList]
+VocalForgeCable.sys
+
+[Manufacturer]
+%MfgName% = VFCable,NTamd64.10.0
+
+[VFCable.NTamd64.10.0]
+%VFCable.DeviceDesc% = VFCable_Install, Root\VocalForgeCable
+
+[VFCable_Install.NT]
+Include = ks.inf,wdmaudio.inf
+Needs   = KS.Registration, WDMAUDIO.Registration
+CopyFiles = VFCable.CopyList
+AddReg  = VFCable.AddReg
+
+[VFCable_Install.NT.Interfaces]
+AddInterface = %KSCATEGORY_AUDIO%,    %KSNAME_WaveSpeaker%,     VFCable.I.WaveSpeaker
+AddInterface = %KSCATEGORY_RENDER%,   %KSNAME_WaveSpeaker%,     VFCable.I.WaveSpeaker
+AddInterface = %KSCATEGORY_REALTIME%, %KSNAME_WaveSpeaker%,     VFCable.I.WaveSpeaker
+AddInterface = %KSCATEGORY_AUDIO%,    %KSNAME_TopologySpeaker%, VFCable.I.TopologySpeaker
+AddInterface = %KSCATEGORY_TOPOLOGY%, %KSNAME_TopologySpeaker%, VFCable.I.TopologySpeaker
+AddInterface = %KSCATEGORY_AUDIO%,    %KSNAME_WaveMicIn%,       VFCable.I.WaveMicIn
+AddInterface = %KSCATEGORY_REALTIME%, %KSNAME_WaveMicIn%,       VFCable.I.WaveMicIn
+AddInterface = %KSCATEGORY_CAPTURE%,  %KSNAME_WaveMicIn%,       VFCable.I.WaveMicIn
+AddInterface = %KSCATEGORY_AUDIO%,    %KSNAME_TopologyMicIn%,   VFCable.I.TopologyMicIn
+AddInterface = %KSCATEGORY_TOPOLOGY%, %KSNAME_TopologyMicIn%,   VFCable.I.TopologyMicIn
+
+[VFCable.AddReg]
+HKR,,AssociatedFilters,,"wdmaud,swmidi,redbook"
+HKR,,Driver,,VocalForgeCable.sys
+HKR,Drivers,SubClasses,,"wave,mixer"
+HKR,Drivers\wave\wdmaud.drv,Driver,,wdmaud.drv
+HKR,Drivers\mixer\wdmaud.drv,Driver,,wdmaud.drv
+HKR,Drivers\wave\wdmaud.drv,Description,,%VFCable.DeviceDesc%
+HKR,Drivers\mixer\wdmaud.drv,Description,,%VFCable.DeviceDesc%
+HKR,%MEDIA_CATEGORIES%\%MicInCustomNameGUID%,Name,,%MicInCustomName%
+
+[VFCable.I.WaveSpeaker]
+AddReg = VFCable.I.WaveSpeaker.AddReg
+[VFCable.I.WaveSpeaker.AddReg]
+HKR,,CLSID,,%Proxy.CLSID%
+HKR,,FriendlyName,,%VFCable.WaveSpeaker.szPname%
+
+[VFCable.I.TopologySpeaker]
+AddReg = VFCable.I.TopologySpeaker.AddReg
+[VFCable.I.TopologySpeaker.AddReg]
+HKR,,CLSID,,%Proxy.CLSID%
+HKR,,FriendlyName,,%VFCable.TopologySpeaker.szPname%
+HKR,EP\0,%PKEY_AudioEndpoint_Association%,,%KSNODETYPE_ANY%
+HKR,EP\0,%PKEY_AudioEndpoint_Supports_EventDriven_Mode%,0x00010001,0x1
+
+[VFCable.I.WaveMicIn]
+AddReg = VFCable.I.WaveMicIn.AddReg
+[VFCable.I.WaveMicIn.AddReg]
+HKR,,CLSID,,%Proxy.CLSID%
+HKR,,FriendlyName,,%VFCable.WaveMicIn.szPname%
+
+[VFCable.I.TopologyMicIn]
+AddReg = VFCable.I.TopologyMicIn.AddReg
+[VFCable.I.TopologyMicIn.AddReg]
+HKR,,CLSID,,%Proxy.CLSID%
+HKR,,FriendlyName,,%VFCable.TopologyMicIn.szPname%
+HKR,EP\0,%PKEY_AudioEndpoint_Association%,,%KSNODETYPE_ANY%
+HKR,EP\0,%PKEY_AudioEndpoint_Supports_EventDriven_Mode%,0x00010001,0x1
+
+[VFCable_Install.NT.Services]
+AddService = VocalForgeCable,0x00000002,VFCable_Service_Inst
+
+[VFCable_Service_Inst]
+DisplayName   = %VFCable.SvcDesc%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %13%\VocalForgeCable.sys
+
+[VFCable_Install.NT.HW]
+AddReg = VFCable.HW.AddReg
+
+[VFCable.HW.AddReg]
+HKR,,DeviceType,0x10001,0x0000001D
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GRGWGX;;;BA)(A;;GRGWGX;;;WD)(A;;GRGWGX;;;RC)"
+
+[VFCable_Install.NT.Wdf]
+KmdfService = VocalForgeCable, VFCable_WdfSect
+
+[VFCable_WdfSect]
+KmdfLibraryVersion = 1.15
+
+[Strings]
+ProviderName = "VocalForge"
+MfgName      = "VocalForge"
+VFCable.DeviceDesc = "VocalForge Cable"
+VFCable.SvcDesc    = "VocalForge Cable virtual audio driver"
+
+KSNAME_WaveSpeaker     = "WaveSpeaker"
+KSNAME_TopologySpeaker = "TopologySpeaker"
+KSNAME_WaveMicIn       = "WaveMicIn"
+KSNAME_TopologyMicIn   = "TopologyMicIn"
+
+VFCable.WaveSpeaker.szPname     = "VocalForge Cable Wave Speaker"
+VFCable.TopologySpeaker.szPname = "VocalForge Cable Topology Speaker"
+VFCable.WaveMicIn.szPname       = "VocalForge Cable Wave Mic"
+VFCable.TopologyMicIn.szPname   = "VocalForge Cable Topology Mic"
+
+Proxy.CLSID          = "{17CCA71B-ECD7-11D0-B908-00A0C9223196}"
+KSCATEGORY_AUDIO     = "{6994AD04-93EF-11D0-A3CC-00A0C9223196}"
+KSCATEGORY_RENDER    = "{65E8773E-8F56-11D0-A3B9-00A0C9223196}"
+KSCATEGORY_CAPTURE   = "{65E8773D-8F56-11D0-A3B9-00A0C9223196}"
+KSCATEGORY_REALTIME  = "{EB115FFC-10C8-4964-831D-6DCB02E6F23F}"
+KSCATEGORY_TOPOLOGY  = "{DDA54A40-1E4C-11D1-A050-405705C10000}"
+KSNODETYPE_ANY       = "{00000000-0000-0000-0000-000000000000}"
+
+PKEY_AudioEndpoint_Association               = "{1DA5D803-D492-4EDD-8C23-E0C0FFEE7F0E},2"
+PKEY_AudioEndpoint_Supports_EventDriven_Mode = "{1DA5D803-D492-4EDD-8C23-E0C0FFEE7F0E},7"
+
+MEDIA_CATEGORIES    = "MediaCategories"
+MicInCustomNameGUID = {d48deb08-fd1c-4d1e-b821-9064d49ae96e}
+MicInCustomName     = "VocalForge Mic"
