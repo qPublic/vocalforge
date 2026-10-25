@@ -36,6 +36,7 @@ function jsProcess(input, D) {
   x = run(loadProcessor('gate-processor.js', 'gate-processor'), x, { threshold: D.gateThr, release: D.gateRel, enabled: D.gateOn ? 1 : 0 });
   x = run(loadProcessor('deesser-processor.js', 'deesser-processor'), x, { freq: D.deessFreq, threshold: D.deessThr, amount: D.deessAmt, enabled: D.deessOn ? 1 : 0 });
   x = run(loadProcessor('compressor-processor.js', 'compressor-processor'), x, { threshold: D.compThr, ratio: D.compRatio, attack: D.compAtk, release: D.compRel, makeup: D.makeup, enabled: D.compOn ? 1 : 0 });
+  x = run(loadProcessor('clarity-processor.js', 'clarity-processor'), x, { amount: D.clarityAmt / 100, enabled: D.clarityOn ? 1 : 0 });
   x = run(loadProcessor('blown-processor.js', 'blown-processor'), x, { drive: D.lofiDrive, bits: D.lofiBits, hold: D.lofiHold, tone: D.lofiTone, level: D.lofiLevel, enabled: D.lofiOn ? 1 : 0 });
   return run(loadProcessor('limiter-processor.js', 'limiter-processor'), x, { ceiling: D.limCeil, enabled: D.limOn ? 1 : 0 });
 }
@@ -70,6 +71,14 @@ test('native chain matches the JavaScript chain on speech-like audio (default se
   const D = { ...jsDefaults(), hpfOn: false, eqOn: false };
   const input = voice(3, -12, -62);
   const { maxAbs, relRms } = errors(nativeProcess(input, { hpfOn: false, eqOn: false }), jsProcess(input, D));
+  assert.ok(relRms < 1e-4, `relative RMS error ${relRms.toExponential(2)}`);
+  assert.ok(maxAbs < 1e-3, `max error ${maxAbs.toExponential(2)}`);
+});
+
+test('native chain matches the JavaScript chain with clarity on', opts, () => {
+  const D = { ...jsDefaults(), hpfOn: false, eqOn: false, clarityOn: true, clarityAmt: 80 };
+  const input = voice(3, -12, -62);
+  const { maxAbs, relRms } = errors(nativeProcess(input, { hpfOn: false, eqOn: false, clarityOn: true, clarityAmt: 80 }), jsProcess(input, D));
   assert.ok(relRms < 1e-4, `relative RMS error ${relRms.toExponential(2)}`);
   assert.ok(maxAbs < 1e-3, `max error ${maxAbs.toExponential(2)}`);
 });

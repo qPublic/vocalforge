@@ -124,6 +124,42 @@ struct DeEsser {
   }
 };
 
+// ---------- clarity (clarity-processor.js): lifts consonants and word onsets in 1.2-4.5 kHz ----------
+struct Clarity {
+  Biquad hp, lp;
+  double fast = 0, slow = 0, gain = 1;
+  bool ready = false;
+  static void band(Biquad& b, double f, bool high) {
+    const double w = 2 * kPi * f / kRate, c = std::cos(w), alpha = std::sin(w) / (2 * 0.7071), a0 = 1 + alpha;
+    if (high) b.set((1 + c) / 2, -(1 + c), (1 + c) / 2, a0, -2 * c, 1 - alpha);
+    else b.set((1 - c) / 2, (1 - c), (1 - c) / 2, a0, -2 * c, 1 - alpha);
+  }
+  void process(float* x, int n, const Params& p) {
+    if (!ready) {
+      band(hp, 1200, true);
+      band(lp, 4500, false);
+      ready = true;
+    }
+    const double amount = p.clarityOn ? p.clarityAmt / 100.0 : 0.0;
+    const double fa = std::exp(-1.0 / (kRate * 0.0005)), fr = std::exp(-1.0 / (kRate * 0.012));
+    const double sa = std::exp(-1.0 / (kRate * 0.025)), sr = std::exp(-1.0 / (kRate * 0.1));
+    const double ga = std::exp(-1.0 / (kRate * 0.001)), gr = std::exp(-1.0 / (kRate * 0.012));
+    const double eps = 2e-4;
+    for (int i = 0; i < n; i++) {
+      const double in = x[i];
+      const double b = lp.process(hp.process(in));
+      const double a = std::fabs(b);
+      fast = a > fast ? a + (fast - a) * fa : a + (fast - a) * fr;
+      slow = a > slow ? a + (slow - a) * sa : a + (slow - a) * sr;
+      const double rise = 20 * std::log10((fast + eps) / (slow + eps)) / 6;
+      const double onset = std::min(1.0, std::max(0.0, rise));
+      const double target = std::pow(10.0, amount * (2 + 6 * onset) / 20);
+      gain = target + (gain - target) * (target > gain ? ga : gr);
+      x[i] = (float)(in + b * (gain - 1));
+    }
+  }
+};
+
 // ---------- compressor (compressor-processor.js): soft knee, no hidden makeup ----------
 struct Compressor {
   double env = 1e-6, grDb = 0, makeupDb = 0;
@@ -351,6 +387,7 @@ class Chain {
     }
     deess_.process(x, n, cur_);
     comp_.process(x, n, cur_);
+    clarity_.process(x, n, cur_);
     blown_.process(x, n, cur_);
     if (extra)
       for (int i = 0; i < n; i++) x[i] += extra[i];
@@ -375,6 +412,7 @@ class Chain {
   Gate gate_;
   DeEsser deess_;
   Compressor comp_;
+  Clarity clarity_;
   Blown blown_;
   Limiter lim_;
   Meters meters_;

@@ -78,7 +78,8 @@ test('suggest: rumble raises the high-pass and every value stays in its slider r
     for (const [id, v] of Object.entries(suggest(a).values)) {
       const p = flat.find((x) => x.id === id);
       assert.ok(p, `unknown param ${id}`);
-      assert.ok(v >= p.min && v <= p.max, `${id}=${v} outside ${p.min}..${p.max}`);
+      if (p.type === 'toggle') assert.equal(typeof v, 'boolean', id);
+      else assert.ok(v >= p.min && v <= p.max, `${id}=${v} outside ${p.min}..${p.max}`);
     }
   }
 });

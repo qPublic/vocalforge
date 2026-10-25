@@ -102,9 +102,10 @@ function suggest(a) {
   const compRatio = round05(clamp(2 + spread / 8, 2, 3));
   const compAtk = 0.015; // slow enough that the start of each word comes through untouched
   const compRel = 0.25;
+  const clarityAmt = compRatio >= 2.5 ? 50 : 40; // more compression flattens word starts, so give back a little more
   const makeup = clamp(round05((-compThr * (1 - 1 / compRatio)) / 2.5), 0, 8);
 
-  notes.push('Tuned for a natural, in-the-room sound: gentle compression, small EQ moves and a slow gate.');
+  notes.push('Tuned for a natural, in-the-room sound: gentle compression, small EQ moves, a slow gate and a touch of clarity so words stay crisp.');
   notes.push(`Noise floor ${a.noiseFloorDb.toFixed(0)} dB, voice ${a.speechMedianDb.toFixed(0)} dB: gate set to ${gateThr} dB.`);
   notes.push(`Input gain ${inGain >= 0 ? '+' : ''}${inGain} dB to bring your voice to a healthy level.`);
   if (a.snrDb < 18) notes.push('Your room is fairly noisy. Try the "Noisy room" preset or turn on Noise suppression.');
@@ -114,7 +115,7 @@ function suggest(a) {
   if (hpfFreq > 80) notes.push(`Low rumble detected: high-pass raised to ${hpfFreq} Hz.`);
 
   return {
-    values: { inGain, gateThr, gateRel, hpfFreq, eqLow, eqMud, eqPres, eqAir, deessThr, deessAmt, compThr, compRatio, compAtk, compRel, makeup },
+    values: { inGain, gateThr, gateRel, clarityOn: true, clarityAmt, hpfFreq, eqLow, eqMud, eqPres, eqAir, deessThr, deessAmt, compThr, compRatio, compAtk, compRel, makeup },
     notes,
   };
 }

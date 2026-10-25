@@ -23,6 +23,8 @@ struct Params {
   double compThr = -22, compRatio = 3, compAtk = 0.008, compRel = 0.2, makeup = 8;
   bool lofiOn = false;
   double lofiDrive = 26, lofiBits = 9, lofiHold = 3, lofiTone = 5500, lofiLevel = -4;
+  bool clarityOn = false;
+  double clarityAmt = 40;
   bool limOn = true;
   double limCeil = -1.5;
   double outGain = 0;
@@ -67,6 +69,8 @@ inline const Field* fields(size_t& count) {
       {"lofiHold", &Params::lofiHold, nullptr, 1, 16},
       {"lofiTone", &Params::lofiTone, nullptr, 1500, 16000},
       {"lofiLevel", &Params::lofiLevel, nullptr, -24, 6},
+      {"clarityOn", nullptr, &Params::clarityOn, 0, 0},
+      {"clarityAmt", &Params::clarityAmt, nullptr, 0, 100},
       {"limOn", nullptr, &Params::limOn, 0, 0},
       {"limCeil", &Params::limCeil, nullptr, -12, 0},
       {"outGain", &Params::outGain, nullptr, -30, 12},

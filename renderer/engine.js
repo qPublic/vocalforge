@@ -1,4 +1,4 @@
-// Audio engine: mic -> HPF -> noise suppression -> gate -> EQ -> de-esser -> compressor -> limiter -> out
+// Audio engine: mic -> HPF -> noise suppression -> gate -> EQ -> de-esser -> compressor -> clarity -> limiter -> out
 // Params are declared once in PARAMS; the UI and presets are generated from it.
 
 const PARAMS = {
@@ -38,6 +38,10 @@ const PARAMS = {
     { id: 'compAtk', label: 'Attack', min: 0.001, max: 0.1, step: 0.001, def: 0.008, unit: 's' },
     { id: 'compRel', label: 'Release', min: 0.05, max: 1, step: 0.01, def: 0.2, unit: 's' },
     { id: 'makeup', label: 'Makeup gain', min: 0, max: 24, step: 0.5, def: 8, unit: 'dB' },
+  ],
+  Clarity: [
+    { id: 'clarityOn', label: 'On', type: 'toggle', def: false },
+    { id: 'clarityAmt', label: 'Enunciation', min: 0, max: 100, step: 5, def: 40, unit: '%' },
   ],
   'Blown-out mic': [
     { id: 'lofiOn', label: 'On', type: 'toggle', def: false },
@@ -109,6 +113,7 @@ class Engine {
     if (outputId && ctx.setSinkId) await ctx.setSinkId(outputId === 'default' ? '' : outputId);
     await ctx.audioWorklet.addModule('gate-processor.js');
     await ctx.audioWorklet.addModule('deesser-processor.js');
+    await ctx.audioWorklet.addModule('clarity-processor.js');
     await ctx.audioWorklet.addModule('compressor-processor.js');
     await ctx.audioWorklet.addModule('limiter-processor.js');
     await ctx.audioWorklet.addModule('blown-processor.js');
@@ -156,6 +161,7 @@ class Engine {
     // stacked with ours and pushed the signal into the limiter.
     n.comp = new AudioWorkletNode(ctx, 'compressor-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.comp.port.onmessage = (e) => (this.reductionDb = e.data.reduction);
+    n.clarity = new AudioWorkletNode(ctx, 'clarity-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.blown = new AudioWorkletNode(ctx, 'blown-processor', { channelCountMode: 'explicit', channelCount: 1 });
     n.lim = new AudioWorkletNode(ctx, 'limiter-processor', { channelCountMode: 'explicit', channelCount: 1 });
     // Soundboard clips join just before the limiter, so they skip the voice processing.
@@ -168,7 +174,7 @@ class Engine {
     n.outMeter = ctx.createAnalyser();
     n.inMeter.fftSize = n.outMeter.fftSize = 1024;
 
-    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.blown, n.lim, n.out];
+    const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.clarity, n.blown, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
     n.out.connect(n.outMeter);
@@ -246,6 +252,10 @@ class Engine {
     c.get('attack').value = v.compAtk;
     c.get('release').value = v.compRel;
     c.get('makeup').value = v.makeup;
+
+    const cl = n.clarity.parameters;
+    cl.get('enabled').value = v.clarityOn ? 1 : 0;
+    cl.get('amount').value = v.clarityAmt / 100;
 
     const b = n.blown.parameters;
     b.get('enabled').value = v.lofiOn ? 1 : 0;
