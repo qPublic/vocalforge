@@ -232,6 +232,9 @@ class Engine {
     const double cap = (double)capture_.capture.internalPeriodSizeInFrames * capture_.capture.internalPeriods / std::max<ma_uint32>(1, capture_.sampleRate);
     const double pl = (double)playback_.playback.internalPeriodSizeInFrames * playback_.playback.internalPeriods / std::max<ma_uint32>(1, playback_.sampleRate);
     latencyMs_ = (float)((cap + pl) * 1000.0 + Limiter::kLook * 1000.0 / kRate);
+    detail_ = {{"captureFrames", capture_.capture.internalPeriodSizeInFrames}, {"capturePeriods", capture_.capture.internalPeriods},
+               {"playbackFrames", playback_.playback.internalPeriodSizeInFrames}, {"playbackPeriods", playback_.playback.internalPeriods},
+               {"rate", capture_.sampleRate}};
     meterStop_ = false;
     meterThread_ = std::thread([this] { meterLoop(); });
     return true;
@@ -259,6 +262,7 @@ class Engine {
 
   bool running() const { return running_; }
   float latencyMs() const { return latencyMs_; }
+  const json& detail() const { return detail_; }
 
   void setValues(const json& values) {
     std::lock_guard<std::mutex> lock(paramsMutex_);
@@ -533,6 +537,7 @@ class Engine {
   bool outputIsDefault_ = true;
   std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, clearVoices_{false};
   std::atomic<float> boardLin_{0.2512f}, deskLin_{0.5f};
+  json detail_;  // what the devices actually negotiated, for diagnostics
   std::atomic<float> latencyMs_{0};
   std::atomic<bool> nsOn_{false};  // RNNoise holds one 10 ms frame while it is on
   bool primed_ = false;
@@ -608,7 +613,7 @@ void handle(Engine& engine, const json& j, bool& quit) {
     reply(d);
   } else if (cmd == "start") {
     if (!engine.start(j, err)) return emitError(err, id);
-    reply({{"event", "started"}, {"latencyMs", engine.latencyMs()}});
+    reply({{"event", "started"}, {"latencyMs", engine.latencyMs()}, {"devices", engine.detail()}});
   } else if (cmd == "stop") {
     engine.stop();
     reply({{"event", "stopped"}});
