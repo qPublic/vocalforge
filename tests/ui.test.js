@@ -427,3 +427,24 @@ test('the delay measurement is only offered for the native engine', async () => 
   assert.equal(window.document.getElementById('measureRow').hidden, true);
   window.close();
 });
+
+test('quick tour: a target taller than the window docks the card in the corner instead of covering it', async () => {
+  const { window, settle } = await loadApp({ store: SKIP_WIZARD });
+  // jsdom has no layout, so give the voice chain panels a tall box and the window a size.
+  const rect = (top, height) => ({ top, left: 20, width: 900, height, right: 920, bottom: top + height });
+  window.Element.prototype.getBoundingClientRect = function () {
+    return this.id === 'panels' ? rect(0, 2000) : rect(60, 40);
+  };
+  Object.defineProperty(window, 'innerHeight', { value: 760, configurable: true });
+  Object.defineProperty(window, 'innerWidth', { value: 1100, configurable: true });
+  window.document.getElementById('tourBtn').click();
+  await settle();
+  const card = () => window.document.querySelector('.tour-card');
+  // A small target near the top: the card goes below it, next to the target's left edge.
+  assert.equal(card().style.top, '118px');
+  for (let i = 0; i < 3; i++) window.document.querySelector('.tour-next').click();
+  assert.match(card().textContent, /The voice chain/);
+  assert.equal(card().style.left, '744px', '1100 - 340 - 16');
+  assert.equal(card().style.top, '564px', '760 - 180 - 16');
+  window.close();
+});

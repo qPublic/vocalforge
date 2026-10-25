@@ -19,7 +19,7 @@ const Wizard = (() => {
     ${Array.from({ length: 9 }, (_, i) => {
       const k = Math.abs(i - 4) / 4;
       const h = 30 + 66 * (1 - k);
-      return `<rect class="bar" style="--i:${i}" x="${6 + i * 12.5}" y="6" width="7.5" height="${h}" rx="3.75" fill="url(#wzg)"/>`;
+      return `<rect class="wz-bar" style="--i:${i}" x="${6 + i * 12.5}" y="6" width="7.5" height="${h}" rx="3.75" fill="url(#wzg)"/>`;
     }).join('')}
   </svg>`;
 

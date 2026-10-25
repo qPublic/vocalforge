@@ -21,7 +21,7 @@ h1 { margin: 0; font-size: 20px; letter-spacing: 0.5px; }
 .devices, .presets { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .presets { margin: 14px 0; }
 label { color: var(--dim); display: inline-flex; align-items: center; gap: 6px; }
-select, input[type=text], button {
+select, input[type=text], input[type=search], button {
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--line);
@@ -30,6 +30,7 @@ select, input[type=text], button {
   font: inherit;
   max-width: 230px;
 }
+.devices select { max-width: 170px; }
 button { cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button:disabled { opacity: 0.5; cursor: default; }

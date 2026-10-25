@@ -12,3 +12,6 @@ driver/build/
 # RNNoise model: too big for git, fetched by scripts/fetch-rnnoise-model.js
 engine/third_party/rnnoise/rnnoise_data.c
 engine/third_party/rnnoise/rnnoise_data.h
+
+# screenshots from visual checks
+.playwright-mcp/

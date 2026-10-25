@@ -79,3 +79,12 @@ test('wiring: the update installer waits for engine.exe to exit, and the model f
   const fetchScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'fetch-rnnoise-model.js'), 'utf8');
   assert.ok(fetchScript.includes('path.basename(cache)') && fetchScript.includes('cwd: path.dirname(cache)'));
 });
+
+test('wiring: the wizard logo does not reuse a class the meters style (their height rule squashed it to dots)', () => {
+  const wizard = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'wizard.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles.css'), 'utf8');
+  const logo = wizard.slice(wizard.indexOf('const logoSvg'), wizard.indexOf('const opts'));
+  const used = [...logo.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/));
+  const clash = used.filter((c) => new RegExp('(^|[\\s,}])\\.' + c + '\\s*[{,.:\\s]').test(styles) && c !== 'wz-logo');
+  assert.deepEqual(clash, [], 'these logo classes are also styled in styles.css: ' + clash.join(', '));
+});

@@ -30,8 +30,17 @@ const Tour = (() => {
     const cardH = card.offsetHeight || 180;
     const cardW = Math.min(card.offsetWidth || 340, window.innerWidth - 24);
     const below = r.top + r.height + pad + 12 + cardH <= window.innerHeight;
-    const top = below ? r.top + r.height + pad + 12 : Math.max(12, r.top - pad - 12 - cardH);
-    const left = Math.min(Math.max(12, r.left), Math.max(12, window.innerWidth - cardW - 12));
+    const above = r.top - pad - 12 - cardH >= 12;
+    let top, left;
+    if (below || above) {
+      top = below ? r.top + r.height + pad + 12 : r.top - pad - 12 - cardH;
+      left = Math.min(Math.max(12, r.left), Math.max(12, window.innerWidth - cardW - 12));
+    } else {
+      // A target taller than the window leaves no room on either side: dock in the corner instead of
+      // covering the part the step is about.
+      top = Math.max(12, window.innerHeight - cardH - 16);
+      left = Math.max(12, window.innerWidth - cardW - 16);
+    }
     Object.assign(card.style, { top: `${top}px`, left: `${left}px` });
   }
 

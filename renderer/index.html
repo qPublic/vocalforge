@@ -88,7 +88,7 @@
         <label class="opt"><input type="checkbox" id="optTray"> Closing the window keeps it running in the tray</label>
         <label class="opt"><input type="checkbox" id="optAutoStart"> Start the mixer automatically</label>
         <label class="opt"><input type="checkbox" id="optNative"> Use the native audio engine <small>(beta)</small></label>
-        <label class="opt">Native buffer <small>(the engine's own cushion between mic and output: smaller means less delay, larger is safer against crackle. Windows also adds its own 10 ms.)</small>
+        <label class="opt">Native buffer
           <select id="optBuffer">
             <option value="128">128 frames (2.7 ms, lowest delay)</option>
             <option value="240">240 frames (5 ms)</option>
@@ -96,6 +96,7 @@
             <option value="960">960 frames (20 ms, safest)</option>
           </select>
         </label>
+        <small class="optHelp">The engine's own cushion between mic and output: smaller means less delay, larger is safer against crackle. Windows also adds its own 10 ms.</small>
         <p class="dbgNote" id="nativeNote"></p>
         <div id="measureRow" hidden>
           <button type="button" id="measureBtn">Measure my delay</button>
