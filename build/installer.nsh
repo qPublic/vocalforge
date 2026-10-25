@@ -29,7 +29,7 @@
   !define MUI_FINISHPAGE_RUN
   !define MUI_FINISHPAGE_RUN_FUNCTION "StartApp"
   !define MUI_FINISHPAGE_SHOWREADME "https://vb-audio.com/Cable/"
-  !define MUI_FINISHPAGE_SHOWREADME_TEXT "Open the VB-Audio Virtual Cable page (free, lets Discord and OBS hear VocalForge)"
+  !define MUI_FINISHPAGE_SHOWREADME_TEXT "Open the free VB-Cable download page"
   !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
   !insertmacro MUI_PAGE_FINISH
 !macroend
