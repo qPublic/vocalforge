@@ -52,6 +52,7 @@ chat app. Use headphones when monitoring. The setup wizard walks through this an
 - Game-only hotkeys: hotkeys work only while a listed game is focused (and, optionally, the cursor is hidden,
   so typing in game chat is not affected)
 - Mute hotkey, tray icon, launch at startup, close to tray, Restart button
+- Settings > Copy diagnostics: version, devices, delay and engine counters on the clipboard for bug reports
 - First-run setup wizard and a short tour (both can be replayed from Settings)
 
 ## Install and updates

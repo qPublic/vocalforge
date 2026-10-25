@@ -129,8 +129,9 @@
       </section>
       <section>
         <h4>Debug</h4>
-        <p>Tools for testing. Previewing the wizard doesn't change any of your settings.</p>
+        <p>Tools for testing. Previewing the wizard doesn't change any of your settings. Copy diagnostics puts your version, devices and engine counters on the clipboard for a bug report (device names only, no audio).</p>
         <div class="dbg">
+          <button type="button" id="copyDiagBtn">Copy diagnostics</button>
           <button type="button" id="previewWizBtn">Preview setup wizard</button>
           <button type="button" id="resetFirstRunBtn">Show wizard on next launch</button>
           <button type="button" id="devtoolsBtn">Toggle DevTools</button>
@@ -147,6 +148,7 @@
   <script src="app.js"></script>
   <script src="autotune-core.js"></script>
   <script src="autotune.js"></script>
+  <script src="diagnostics.js"></script>
   <script src="hotkeys.js"></script>
   <script src="soundboard.js"></script>
   <script src="catalog.js"></script>

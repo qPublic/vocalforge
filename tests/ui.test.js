@@ -492,3 +492,18 @@ test('Hear raw is a toggle in the web engine too, and has its own hotkey slot', 
   assert.deepEqual(errors, []);
   window.close();
 });
+
+test('Copy diagnostics puts a report on the clipboard through the main process', async () => {
+  const { window, calls, settle, errors } = await loadApp({ store: SKIP_WIZARD });
+  window.document.getElementById('settingsBtn').click();
+  window.document.getElementById('copyDiagBtn').click();
+  await settle();
+  const copied = calls.find((c) => c[0] === 'copyText');
+  assert.ok(copied, 'copyText was called');
+  assert.match(copied[1], /^VocalForge diagnostics/);
+  assert.match(copied[1], /Version: 0\.0\.0-test/);
+  assert.match(copied[1], /Engine: web/);
+  assert.match(window.document.getElementById('dbgNote').textContent, /Copied/);
+  assert.deepEqual(errors, []);
+  window.close();
+});

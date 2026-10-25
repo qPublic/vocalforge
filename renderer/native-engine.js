@@ -17,6 +17,10 @@ class NativeEngine {
     this.running = false;
     this.meters = { in: -100, out: -100, gr: 0, gate: 1, latencyMs: 0 };
     this.measuredMs = null;
+    this.stats = { underruns: 0, overruns: 0, monUnderruns: 0, micCushion: 0 }; // for Copy diagnostics
+    this.deviceInfo = null;
+    this.engineVersion = '';
+    this.backend = '';
     this.pending = new Map();
     this.nextId = 1;
     this.onGate = () => {};
@@ -66,11 +70,16 @@ class NativeEngine {
     switch (e.event) {
       case 'meters':
         this.meters = { in: e.in, out: e.out, gr: e.gr, gate: e.gate, latencyMs: e.latencyMs };
+        this.stats = { underruns: e.underruns | 0, overruns: e.overruns | 0, monUnderruns: e.monUnderruns | 0, micCushion: e.micCushion | 0 };
         this.onGate(e.gate);
         break;
       case 'error':
         // An error that carries an id answers a call that already timed out or was cancelled.
         if (e.id == null) this.onError(e.message);
+        break;
+      case 'ready':
+        this.engineVersion = String(e.version || '');
+        this.backend = String(e.backend || '');
         break;
       case 'deviceLost':
         if (this.running) this.onDeviceLost(e.which);
@@ -104,13 +113,14 @@ class NativeEngine {
     await this.stop();
     const saved = Number(typeof store !== 'undefined' && store.nativeBuffer);
     const frames = NATIVE_BUFFER_CHOICES.includes(saved) ? saved : 240;
-    await this._call({
+    const started = await this._call({
       cmd: 'start',
       input: inputId || 'default',
       output: outputId || 'default',
       monitor: { on: !!monitor, device: monitorId || 'default' },
       bufferFrames: frames,
     });
+    this.deviceInfo = started.devices || null;
     this.running = true;
     this.apply();
     this._send({ cmd: 'mute', on: this.muted });

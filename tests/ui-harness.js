@@ -41,6 +41,8 @@ async function loadApp({ vf = {}, store, native = false, engineAvailable = nativ
   };
   const bridge = {
     getVersion: record('getVersion', async () => '0.0.0-test'),
+    getSystemInfo: record('getSystemInfo', async () => 'Windows_NT 10.0.0 x64, Electron 0 (Chrome 0)'),
+    copyText: record('copyText', async () => true),
     checkForUpdates: record('checkForUpdates', async () => {}),
     installUpdate: record('installUpdate', async () => {}),
     onUpdateStatus: () => {},

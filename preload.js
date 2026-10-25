@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('vf', {
   sendEngine: (cmd) => ipcRenderer.invoke('engine:send', cmd),
   onEngineEvent: (cb) => ipcRenderer.on('engine:event', (_e, evt) => cb(evt)),
   getVersion: () => ipcRenderer.invoke('app:version'),
+  getSystemInfo: () => ipcRenderer.invoke('app:system'),
+  copyText: (text) => ipcRenderer.invoke('app:copy', text),
   restartApp: () => ipcRenderer.invoke('app:restart'),
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),

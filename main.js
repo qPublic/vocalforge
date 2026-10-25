@@ -1,5 +1,6 @@
-const { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, session, shell, Tray } = require('electron');
+const { app, BrowserWindow, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, session, shell, Tray } = require('electron');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const sounds = require('./lib/sounds');
@@ -320,6 +321,13 @@ const ALLOWED_LINKS = ['https://vb-audio.com/Cable/', 'https://github.com/qPubli
 
 function setupUpdates() {
   ipcMain.handle('app:version', () => app.getVersion());
+  // For Settings > Copy diagnostics: system facts only, nothing personal.
+  ipcMain.handle('app:system', () => `${os.type()} ${os.release()} ${process.arch}, Electron ${process.versions.electron} (Chrome ${process.versions.chrome})`);
+  ipcMain.handle('app:copy', (_e, text) => {
+    if (typeof text !== 'string' || text.length > 20000) return false;
+    clipboard.writeText(text);
+    return true;
+  });
   ipcMain.handle('app:open-external', (_e, url) => ALLOWED_LINKS.includes(url) && shell.openExternal(url));
   ipcMain.handle('debug:devtools', () => win.webContents.toggleDevTools());
 

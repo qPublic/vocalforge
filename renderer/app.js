@@ -534,6 +534,39 @@ function setupSettings() {
     note('Done. The wizard will show on next launch.');
   });
   $('devtoolsBtn').addEventListener('click', () => window.vf.toggleDevTools());
+  $('copyDiagBtn').addEventListener('click', async () => {
+    try {
+      const label = (id) => ($(id).selectedOptions[0] ? $(id).selectedOptions[0].textContent : '');
+      const cfg = await window.vf.getSettings();
+      const text = buildDiagnostics({
+        app: $('ver').textContent.replace(/^v/, ''),
+        system: await window.vf.getSystemInfo(),
+        running,
+        muted,
+        raw,
+        mic: label('inSel'),
+        output: label('outSel'),
+        monitor: $('monChk').checked ? label('monSel') : '',
+        preset: store.last,
+        values: engine.values,
+        defaults: defaults(),
+        settings: cfg,
+        engine: {
+          native: !!engine.isNative,
+          version: engine.engineVersion,
+          backend: engine.backend,
+          buffer: NATIVE_BUFFER_CHOICES.includes(Number(store.nativeBuffer)) ? Number(store.nativeBuffer) : 240,
+          devices: engine.deviceInfo,
+          latencyMs: engine.latencyMs,
+          latencyMeasured: !!engine.latencyMeasured,
+          stats: engine.stats,
+        },
+      });
+      note((await window.vf.copyText(text)) ? 'Copied. Paste it into your bug report.' : 'Could not copy.');
+    } catch (err) {
+      note('Could not copy: ' + err.message);
+    }
+  });
 }
 
 // ---------- init ----------

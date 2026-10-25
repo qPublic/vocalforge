@@ -330,3 +330,17 @@ test('native mode: after about ten failed attempts the lost device is replaced b
   assert.equal(window.document.getElementById('startBtn').textContent, 'Stop');
   window.close();
 });
+
+test('native mode: the diagnostics report includes the engine counters and device periods', async () => {
+  const { window, calls, emitEngine, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  window.document.getElementById('startBtn').click();
+  await settle();
+  emitEngine({ event: 'meters', in: -30, out: -20, gr: 0, gate: 1, latencyMs: 54, underruns: 3, overruns: 1, monUnderruns: 2, micCushion: 480 });
+  window.document.getElementById('settingsBtn').click();
+  window.document.getElementById('copyDiagBtn').click();
+  await settle();
+  const text = calls.filter((c) => c[0] === 'copyText').pop()[1];
+  assert.match(text, /Engine: native/);
+  assert.match(text, /Mic feed: 3 underruns, 1 overruns, 2 monitor underruns, cushion 480 samples/);
+  window.close();
+});
