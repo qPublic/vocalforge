@@ -8,6 +8,7 @@ const hotkeys = require('./lib/hotkeys');
 const appSettings = require('./lib/settings');
 const foreground = require('./lib/foreground');
 const { sanitizeEngineCommand } = require('./lib/engine-cmd');
+const { nextZoom } = require('./lib/zoom');
 const catalog = require('./lib/catalog');
 
 let win;
@@ -31,6 +32,13 @@ function createWindow() {
     },
   });
   win.setMenuBarVisibility(false);
+  // Ctrl+= / Ctrl+Plus / Ctrl+- / Ctrl+0 zoom the window (see lib/zoom.js).
+  win.webContents.on('before-input-event', (event, input) => {
+    const level = nextZoom(input, win.webContents.getZoomLevel());
+    if (level === null) return;
+    event.preventDefault();
+    win.webContents.setZoomLevel(level);
+  });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   // With "close to tray" on, the close button hides the window and the mixer keeps running.
