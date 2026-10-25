@@ -27,6 +27,8 @@ struct Params {
   double lofiDrive = 26, lofiBits = 9, lofiHold = 3, lofiTone = 5500, lofiLevel = -4;
   bool clarityOn = false;
   double clarityAmt = 40;
+  bool duckOn = false;
+  double duckAmt = 9, duckThr = -45, duckRel = 0.6;
   bool limOn = true;
   double limCeil = -1.5;
   double outGain = 0;
@@ -76,6 +78,10 @@ inline const Field* fields(size_t& count) {
       {"lofiLevel", &Params::lofiLevel, nullptr, -24, 6},
       {"clarityOn", nullptr, &Params::clarityOn, 0, 0},
       {"clarityAmt", &Params::clarityAmt, nullptr, 0, 100},
+      {"duckOn", nullptr, &Params::duckOn, 0, 0},
+      {"duckAmt", &Params::duckAmt, nullptr, 0, 24},
+      {"duckThr", &Params::duckThr, nullptr, -70, -20},
+      {"duckRel", &Params::duckRel, nullptr, 0.2, 2},
       {"limOn", nullptr, &Params::limOn, 0, 0},
       {"limCeil", &Params::limCeil, nullptr, -12, 0},
       {"outGain", &Params::outGain, nullptr, -30, 12},

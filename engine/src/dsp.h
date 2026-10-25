@@ -363,10 +363,11 @@ class Chain {
 
   // Processes `n` mono samples. `extra` (optional) is added just before the limiter, like the
   // soundboard and desktop buses in the web engine. n may be any size.
-  void process(const float* in, float* out, int n, const float* extra = nullptr) {
+  // `desk` (optional) is the desktop audio, already at its own level; it is turned down while the mic is active.
+  void process(const float* in, float* out, int n, const float* extra = nullptr, const float* desk = nullptr) {
     for (int off = 0; off < n; off += kMaxBlock) {
       const int m = std::min(kMaxBlock, n - off);
-      block_(in + off, out + off, m, extra ? extra + off : nullptr);
+      block_(in + off, out + off, m, extra ? extra + off : nullptr, desk ? desk + off : nullptr);
     }
   }
 
@@ -382,7 +383,7 @@ class Chain {
     hpf_ = target_.hpfOn ? target_.hpfFreq : 10;
   }
 
-  void block_(const float* in, float* out, int n, const float* extra) {
+  void block_(const float* in, float* out, int n, const float* extra, const float* desk) {
     // Bypass (the A/B comparison): every voice stage is off, so only input gain, the limiter and output gain remain.
     Params tp = target_;
     if (bypass_.load(std::memory_order_relaxed)) {
@@ -409,6 +410,7 @@ class Chain {
     double inPeak = 0;
     for (int i = 0; i < n; i++) {
       x[i] = (float)(in[i] * inG_);
+      side_[i] = x[i];  // what the ducker listens to: the mic after input gain, before any effect
       inPeak = std::max(inPeak, std::fabs((double)x[i]));
     }
     for (int i = 0; i < n; i++) x[i] = (float)hp_.process(x[i]);
@@ -427,8 +429,25 @@ class Chain {
     comp_.process(x, n, cur_);
     clarity_.process(x, n, cur_);
     blown_.process(x, n, cur_);
-    if (extra)
-      for (int i = 0; i < n; i++) x[i] += extra[i];
+    // Soundboard and desktop audio join here. The desktop is ducked while the mic is active (see ducker-processor.js).
+    {
+      const double thr = dbToLin(cur_.duckThr), duckLin = dbToLin(-cur_.duckAmt);
+      const double atk = std::exp(-1.0 / (kRate * 0.005)), rel = std::exp(-1.0 / (kRate * 0.05));
+      const double down = std::exp(-1.0 / (kRate * 0.02)), up = std::exp(-1.0 / (kRate * cur_.duckRel));
+      const int holdSamples = (int)std::lround(kRate * 0.3);
+      for (int i = 0; i < n; i++) {
+        const double a = std::fabs((double)side_[i]);
+        duckEnv_ = a > duckEnv_ ? a + (duckEnv_ - a) * atk : a + (duckEnv_ - a) * rel;
+        if (duckEnv_ > thr) duckHold_ = holdSamples;
+        else if (duckHold_ > 0) duckHold_--;
+        const double target = cur_.duckOn && duckHold_ > 0 ? duckLin : 1.0;
+        duckGain_ = target + (duckGain_ - target) * (target < duckGain_ ? down : up);
+        double v = x[i];
+        if (extra) v += extra[i];
+        if (desk) v += desk[i] * duckGain_;
+        x[i] = (float)v;
+      }
+    }
     lim_.process(x, n, cur_);
     double outPeak = 0;
     for (int i = 0; i < n; i++) {
@@ -452,6 +471,9 @@ class Chain {
   Compressor comp_;
   Clarity clarity_;
   Leveler lev_;
+  float side_[kMaxBlock] = {};
+  double duckEnv_ = 0, duckGain_ = 1;
+  int duckHold_ = 0;
   Blown blown_;
   Limiter lim_;
   Meters meters_;

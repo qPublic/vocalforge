@@ -56,6 +56,12 @@ const PARAMS = {
     { id: 'lofiTone', label: 'Top cut', min: 1500, max: 16000, step: 100, def: 5500, unit: 'Hz' },
     { id: 'lofiLevel', label: 'Level', min: -24, max: 6, step: 0.5, def: -4, unit: 'dB' },
   ],
+  'Duck desktop audio': [
+    { id: 'duckOn', label: 'On', type: 'toggle', def: false },
+    { id: 'duckAmt', label: 'Reduce by', min: 0, max: 24, step: 1, def: 9, unit: 'dB' },
+    { id: 'duckThr', label: 'Voice level', min: -70, max: -20, step: 1, def: -45, unit: 'dB' },
+    { id: 'duckRel', label: 'Come back in', min: 0.2, max: 2, step: 0.1, def: 0.6, unit: 's' },
+  ],
   Limiter: [
     { id: 'limOn', label: 'On', type: 'toggle', def: true },
     { id: 'limCeil', label: 'Ceiling', min: -12, max: 0, step: 0.5, def: -1.5, unit: 'dB' },
@@ -122,6 +128,7 @@ class Engine {
     await ctx.audioWorklet.addModule('deesser-processor.js');
     await ctx.audioWorklet.addModule('clarity-processor.js');
     await ctx.audioWorklet.addModule('leveler-processor.js');
+    await ctx.audioWorklet.addModule('ducker-processor.js');
     await ctx.audioWorklet.addModule('compressor-processor.js');
     await ctx.audioWorklet.addModule('limiter-processor.js');
     await ctx.audioWorklet.addModule('blown-processor.js');
@@ -180,7 +187,10 @@ class Engine {
     n.board = ctx.createGain();
     n.board.connect(n.lim);
     n.desktop = ctx.createGain();
-    n.desktop.connect(n.lim);
+    // The desktop audio passes through the ducker, which listens to the mic (after input gain) on its second input.
+    n.duck = new AudioWorkletNode(ctx, 'ducker-processor', { numberOfInputs: 2, channelCountMode: 'explicit', channelCount: 1 });
+    n.desktop.connect(n.duck, 0, 0);
+    n.duck.connect(n.lim);
     n.out = ctx.createGain();
     n.inMeter = ctx.createAnalyser();
     n.outMeter = ctx.createAnalyser();
@@ -189,6 +199,7 @@ class Engine {
     const chain = [n.src, n.inGain, n.hpf, ...(n.rn ? [n.rn] : []), n.gate, n.level, n.low, n.mud, n.pres, n.air, n.deess, n.comp, n.clarity, n.blown, n.lim, n.out];
     chain.reduce((a, b) => (a.connect(b), b));
     n.inGain.connect(n.inMeter);
+    n.inGain.connect(n.duck, 0, 1);
     n.out.connect(n.outMeter);
     n.out.connect(ctx.destination);
 
@@ -247,6 +258,12 @@ class Engine {
     g.get('enabled').value = v.gateOn ? 1 : 0;
     g.get('threshold').value = v.gateThr;
     g.get('release').value = v.gateRel;
+
+    const dk = n.duck.parameters;
+    dk.get('enabled').value = v.duckOn ? 1 : 0;
+    dk.get('amount').value = v.duckAmt;
+    dk.get('threshold').value = v.duckThr;
+    dk.get('release').value = v.duckRel;
 
     const lv = n.level.parameters;
     lv.get('enabled').value = v.levelOn ? 1 : 0;

@@ -330,3 +330,48 @@ test('native chain matches the JavaScript chain with the leveler on', opts, () =
   assert.ok(relRms < 1e-4, `relative RMS error ${relRms.toExponential(2)}`);
   assert.ok(maxAbs < 1e-3, `max error ${maxAbs.toExponential(2)}`);
 });
+
+test('native ducker matches the JavaScript ducker: desktop audio dips while the mic is active', opts, () => {
+  const sr = 48000;
+  const sec = (s) => Math.round(s * sr);
+  const mic = new Float32Array(sec(9));
+  const speech = voice(3, -20, -80);
+  mic.set(speech.subarray(0, Math.min(speech.length, sec(3))), sec(2));
+  const desk = new Float32Array(sec(9)).map((_, i) => 0.05 * Math.sin((2 * Math.PI * 440 * i) / sr));
+  const run = (values) => {
+    fs.writeFileSync(path.join(tmp, 'dk-in.f32'), Buffer.from(mic.buffer));
+    fs.writeFileSync(path.join(tmp, 'dk-desk.f32'), Buffer.from(desk.buffer));
+    fs.writeFileSync(path.join(tmp, 'dk-params.json'), JSON.stringify({ values }));
+    execFileSync(EXE, ['--process-raw', path.join(tmp, 'dk-in.f32'), path.join(tmp, 'dk-out.f32'), path.join(tmp, 'dk-params.json'), '--desk', path.join(tmp, 'dk-desk.f32')]);
+    const raw = fs.readFileSync(path.join(tmp, 'dk-out.f32'));
+    return new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4).slice();
+  };
+  const base = { hpfOn: false, eqOn: false, limCeil: 0 };
+  const off = run({ ...base, duckOn: false });
+  const on = run({ ...base, duckOn: true, duckAmt: 9, duckThr: -45, duckRel: 0.6 });
+  // What the ducker took away is what the two native runs differ by; compare it with the JavaScript ducker.
+  const Ducker = loadProcessor('ducker-processor.js', 'ducker-processor');
+  const proc = new Ducker();
+  const p = {};
+  for (const d of Ducker.parameterDescriptors) p[d.name] = new Float32Array([{ amount: 9, threshold: -45, release: 0.6, enabled: 1 }[d.name]]);
+  const js = new Float32Array(desk.length);
+  for (let i = 0; i < desk.length; i += 128) {
+    const o = new Float32Array(Math.min(128, desk.length - i));
+    proc.process([[desk.subarray(i, i + o.length)], [mic.subarray(i, i + o.length)]], [[o]], p);
+    js.set(o, i);
+  }
+  const win = sec(0.1);
+  let worst = 0;
+  for (let at = 0; at + win <= desk.length; at += win) {
+    let nat = 0, ref = 0;
+    for (let i = at; i < at + win; i++) {
+      nat += (off[i] - on[i]) ** 2;
+      ref += (desk[i] - js[i]) ** 2;
+    }
+    worst = Math.max(worst, Math.abs(Math.sqrt(nat / win) - Math.sqrt(ref / win)));
+  }
+  const peakRef = 0.05 / Math.SQRT2;
+  assert.ok(worst < 0.1 * peakRef, `native and JavaScript duck differently: worst window difference ${worst.toExponential(2)} (desktop RMS ${peakRef.toFixed(3)})`);
+  const removed = off.slice(sec(3), sec(4)).map((v, i) => v - on[sec(3) + i]);
+  assert.ok(rms(removed) > 0.5 * peakRef, `the ducker removed only ${rms(removed).toFixed(4)} of ${peakRef.toFixed(4)} desktop RMS`);
+});

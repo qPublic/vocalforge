@@ -703,14 +703,15 @@ class Engine {
         if (vo.pos >= s.size()) voices_.erase(voices_.begin() + v);
         else v++;
       }
+      std::fill(desk, desk + m, 0.0f);
       if (loopbackInit_) {
         const size_t dGot = deskRing_.pop(desk, m);
         const float dl = deskLin_;
-        for (size_t i = 0; i < dGot; i++) extra[i] += desk[i] * dl;
+        for (size_t i = 0; i < dGot; i++) desk[i] *= dl;
         if (deskRing_.size() > (size_t)frames_ * 20) deskRing_.skip(deskRing_.size() - (size_t)frames_ * 4);
       }
 
-      chain_.process(mic, mono, (int)m, extra);
+      chain_.process(mic, mono, (int)m, extra, loopbackInit_ ? desk : nullptr);
       for (ma_uint32 i = 0; i < m; i++) out[2 * (off + i)] = out[2 * (off + i) + 1] = mono[i];
       if (monitorOn_) monRing_.push(mono, m);
 
@@ -773,7 +774,7 @@ class Engine {
 };
 
 // ---------- offline processing (used by parity tests) ----------
-int runOffline(const std::string& inPath, const std::string& outPath, const std::string& paramsPath) {
+int runOffline(const std::string& inPath, const std::string& outPath, const std::string& paramsPath, const std::string& deskPath = "") {
   std::ifstream in(inPath, std::ios::binary);
   if (!in) {
     fprintf(stderr, "cannot read %s\n", inPath.c_str());
@@ -782,6 +783,15 @@ int runOffline(const std::string& inPath, const std::string& outPath, const std:
   std::vector<char> raw((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
   std::vector<float> x(raw.size() / sizeof(float));
   if (!x.empty()) memcpy(x.data(), raw.data(), x.size() * sizeof(float));
+
+  std::vector<float> desk;  // optional desktop audio, same length as the mic, for testing the ducker
+  if (!deskPath.empty()) {
+    std::ifstream df(deskPath, std::ios::binary);
+    std::vector<char> draw((std::istreambuf_iterator<char>(df)), std::istreambuf_iterator<char>());
+    desk.resize(draw.size() / sizeof(float));
+    if (!desk.empty()) memcpy(desk.data(), draw.data(), desk.size() * sizeof(float));
+    desk.resize(x.size(), 0.0f);
+  }
 
   Params p;
   bool bypass = false;
@@ -800,7 +810,7 @@ int runOffline(const std::string& inPath, const std::string& outPath, const std:
   chain.setBypass(bypass);
   chain.setParams(p, true);
   std::vector<float> y(x.size());
-  for (size_t off = 0; off < x.size(); off += 128) chain.process(x.data() + off, y.data() + off, (int)std::min<size_t>(128, x.size() - off));
+  for (size_t off = 0; off < x.size(); off += 128) chain.process(x.data() + off, y.data() + off, (int)std::min<size_t>(128, x.size() - off), nullptr, desk.empty() ? nullptr : desk.data() + off);
 
   std::ofstream out(outPath, std::ios::binary);
   out.write((const char*)y.data(), y.size() * sizeof(float));
@@ -922,7 +932,10 @@ int main(int argc, char** argv) {
         fprintf(stderr, "usage: --process-raw IN OUT [PARAMS.json]\n");
         return 2;
       }
-      return vf::runOffline(args[i + 1], args[i + 2], i + 3 < args.size() && args[i + 3].rfind("--", 0) != 0 ? args[i + 3] : "");
+      std::string desk;
+      for (size_t k = i + 3; k + 1 < args.size(); k++)
+        if (args[k] == "--desk") desk = args[k + 1];
+      return vf::runOffline(args[i + 1], args[i + 2], i + 3 < args.size() && args[i + 3].rfind("--", 0) != 0 ? args[i + 3] : "", desk);
     }
   }
   return vf::runControl(backend);
