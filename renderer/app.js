@@ -337,7 +337,7 @@ async function setupGeneral() {
   $('optNative').checked = !!cfg.nativeEngine;
   $('optNative').disabled = !nativeCfg.available;
   $('nativeNote').textContent = nativeCfg.available
-    ? 'Lower-latency C++ audio engine. Restart VocalForge after changing this. Noise suppression is not available in it yet.'
+    ? 'Lower-latency C++ audio engine. Restart VocalForge after changing this.'
     : 'The native engine file was not found in this install.';
   $('optBuffer').value = String(store.nativeBuffer || 240);
   $('optBuffer').disabled = !nativeCfg.available;

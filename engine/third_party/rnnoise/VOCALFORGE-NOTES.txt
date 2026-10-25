@@ -1,0 +1,4 @@
+RNNoise (https://github.com/xiph/rnnoise), commit 372f7b4 (the v0.2 era the web engine's Jitsi build uses).
+License: BSD-3, see COPYING. Plain C build, no SIMD files; the sources are unmodified.
+The model files rnnoise_data.c/.h (model 0b50c45, 29 MB) are not in git: scripts/fetch-rnnoise-model.js
+downloads them, checks the pinned SHA-256 and unpacks them here. npm run build:engine does that first.

@@ -16,6 +16,13 @@ call "%VSROOT%\VC\Auxiliary\Build\vcvars64.bat" >nul
 if errorlevel 1 exit /b 1
 cd /d "%~dp0"
 if not exist build mkdir build
-cl /nologo /std:c++20 /O2 /EHsc /MT /DNDEBUG /utf-8 /W3 /Fo:build\ /Fe:build\engine.exe src\main.cpp
+rem RNNoise 0.2 is plain C (about 0.2 ms per 10 ms frame), so no SIMD files are needed. Its model,
+rem rnnoise_data.c, is fetched by scripts\fetch-rnnoise-model.js (npm run build:engine does that first).
+set "R=third_party\rnnoise"
+if not exist "%R%\rnnoise_data.c" (
+  echo RNNoise model missing: run npm run build:engine, or node scripts\fetch-rnnoise-model.js
+  exit /b 1
+)
+cl /nologo /std:c++20 /O2 /EHsc /MT /DNDEBUG /D_USE_MATH_DEFINES /utf-8 /W3 /I%R% /Fo:build\ /Fe:build\engine.exe src\main.cpp %R%\celt_lpc.c %R%\denoise.c %R%\kiss_fft.c %R%\nnet.c %R%\nnet_default.c %R%\parse_lpcnet_weights.c %R%\pitch.c %R%\rnn.c %R%\rnnoise_data.c %R%\rnnoise_tables.c
 if errorlevel 1 exit /b 1
 echo Built engine\build\engine.exe

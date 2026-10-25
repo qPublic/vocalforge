@@ -263,6 +263,7 @@ class Engine {
   void setValues(const json& values) {
     std::lock_guard<std::mutex> lock(paramsMutex_);
     applyValues(pending_, values);
+    nsOn_ = pending_.nsOn;
     dirty_ = true;
   }
   void setMuted(bool m) { muted_ = m; }
@@ -518,7 +519,7 @@ class Engine {
       meterCv_.wait_for(lock, std::chrono::milliseconds(50));
       if (meterStop_) break;
       emit({{"event", "meters"}, {"in", meterIn_.load()}, {"out", meterOut_.load()}, {"gr", meterGr_.load()}, {"gate", meterGate_.load()},
-            {"latencyMs", latencyMs_.load()}, {"underruns", underruns_.load()}, {"overruns", overruns_.load()}});
+            {"latencyMs", latencyMs_.load() + (nsOn_.load() ? 10.f : 0.f)}, {"underruns", underruns_.load()}, {"overruns", overruns_.load()}});
     }
   }
 
@@ -533,6 +534,7 @@ class Engine {
   std::atomic<bool> running_{false}, monitorOn_{false}, desktopWanted_{false}, muted_{false}, clearVoices_{false};
   std::atomic<float> boardLin_{0.2512f}, deskLin_{0.5f};
   std::atomic<float> latencyMs_{0};
+  std::atomic<bool> nsOn_{false};  // RNNoise holds one 10 ms frame while it is on
   bool primed_ = false;
   std::atomic<uint32_t> underruns_{0}, overruns_{0};
 

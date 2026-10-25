@@ -171,3 +171,17 @@ test('wizard and auto-tune use the default mic when the native engine is active'
   assert.deepEqual(errors, []);
   window.close();
 });
+
+test('native mode: turning noise suppression on is sent to the engine without an error', async () => {
+  const { window, errors, engineLog, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  window.document.getElementById('startBtn').click();
+  await settle(60);
+  const toggle = window.document.querySelector('input.toggle[title="Enable Noise suppression"]');
+  assert.ok(toggle, 'the noise suppression switch exists');
+  toggle.checked = true;
+  toggle.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await settle(30);
+  assert.ok(cmds(engineLog, 'set').some((c) => c.values && c.values.nsOn === true), 'nsOn reaches the engine');
+  assert.deepEqual(errors, []);
+  window.close();
+});

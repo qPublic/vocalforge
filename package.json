@@ -1,6 +1,6 @@
 {
   "name": "vocalforge",
-  "version": "0.1.0-beta.14",
+  "version": "0.1.0-beta.15",
   "description": "Mic enhancement mixer: gate, EQ, compressor, limiter, routed to a virtual cable",
   "main": "main.js",
   "scripts": {
@@ -64,6 +64,10 @@
       {
         "from": "engine/build/engine.exe",
         "to": "engine/engine.exe"
+      },
+      {
+        "from": "engine/third_party/rnnoise/COPYING",
+        "to": "engine/RNNOISE-LICENSE.txt"
       }
     ]
   }

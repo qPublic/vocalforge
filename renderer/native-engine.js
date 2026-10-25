@@ -11,11 +11,9 @@ class NativeEngine {
     this.desktopDb = -6;
     this.boardDb = 0;
     this.running = false;
-    this.rnReady = false; // noise suppression is not in the native engine yet
     this.meters = { in: -100, out: -100, gr: 0, gate: 1, latencyMs: 0 };
     this.pending = new Map();
     this.nextId = 1;
-    this.warnedNoise = false;
     this.onGate = () => {};
     this.onError = () => {};
     this.onDesktopFailed = () => {};
@@ -120,7 +118,6 @@ class NativeEngine {
   set(id, value) {
     this.values[id] = value;
     this._send({ cmd: 'set', values: { [id]: value } });
-    this._warnNoise();
   }
 
   load(values) {
@@ -130,14 +127,6 @@ class NativeEngine {
 
   apply() {
     this._send({ cmd: 'set', values: this.values });
-    this._warnNoise();
-  }
-
-  _warnNoise() {
-    if (this.values.nsOn && !this.warnedNoise) {
-      this.warnedNoise = true;
-      this.onError('Noise suppression is not available in the native engine yet. Switch the engine back in Settings to use it.');
-    }
   }
 
   level(which) {

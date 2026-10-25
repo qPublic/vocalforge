@@ -8,6 +8,10 @@
 #include <vector>
 #include "params.h"
 
+extern "C" {
+#include "../third_party/rnnoise/rnnoise.h"
+}
+
 namespace vf {
 
 constexpr double kPi = 3.14159265358979323846;
@@ -210,6 +214,62 @@ struct Limiter {
   }
 };
 
+// ---------- RNNoise (neural noise suppression), port of renderer/rnnoise-processor.js ----------
+// RNNoise works on 10 ms frames (480 samples at 48 kHz) of 16-bit-range floats, so this adds one frame of
+// latency while on. The dry signal is delayed by the same frame so wet and dry stay aligned.
+class Denoise {
+ public:
+  Denoise() : state_(rnnoise_create(nullptr)) {}
+  ~Denoise() {
+    if (state_) rnnoise_destroy(state_);
+  }
+  Denoise(const Denoise&) = delete;
+  Denoise& operator=(const Denoise&) = delete;
+
+  void process(float* x, int n, bool on, double wet = 1.0) {
+    if (!on || !state_) {
+      if (active_) reset_();
+      return;
+    }
+    active_ = true;
+    for (int i = 0; i < n; i++) {
+      const int p = fill_;
+      const float y = (float)(prevRaw_[p] * (1 - wet) + outBuf_[p] * wet);
+      inBuf_[p] = x[i];
+      x[i] = y;
+      if (++fill_ == kFrame) {
+        fill_ = 0;
+        frame_();
+      }
+    }
+  }
+
+ private:
+  static constexpr int kFrame = 480;
+  static constexpr float kScale = 32768.f;
+
+  void frame_() {
+    float in[kFrame], out[kFrame];
+    for (int i = 0; i < kFrame; i++) in[i] = inBuf_[i] * kScale;
+    rnnoise_process_frame(state_, out, in);
+    for (int i = 0; i < kFrame; i++) outBuf_[i] = out[i] / kScale;
+    std::memcpy(prevRaw_, inBuf_, sizeof(prevRaw_));
+  }
+  // Start clean next time instead of replaying stale audio.
+  void reset_() {
+    fill_ = 0;
+    std::memset(inBuf_, 0, sizeof(inBuf_));
+    std::memset(prevRaw_, 0, sizeof(prevRaw_));
+    std::memset(outBuf_, 0, sizeof(outBuf_));
+    active_ = false;
+  }
+
+  DenoiseState* state_;
+  float inBuf_[kFrame] = {}, prevRaw_[kFrame] = {}, outBuf_[kFrame] = {};
+  int fill_ = 0;
+  bool active_ = false;
+};
+
 // ---------- the whole voice chain ----------
 struct Meters {
   float inDb = -100, outDb = -100, grDb = 0, gate = 1, limiterGain = 1;
@@ -272,6 +332,7 @@ class Chain {
       inPeak = std::max(inPeak, std::fabs((double)x[i]));
     }
     for (int i = 0; i < n; i++) x[i] = (float)hp_.process(x[i]);
+    dn_.process(x, n, cur_.nsOn, cur_.nsAmt / 100.0);
     gate_.process(x, n, cur_);
     for (int i = 0; i < n; i++) {
       double v = x[i];
@@ -302,6 +363,7 @@ class Chain {
   bool first_ = true, muted_ = false;
   double inG_ = 1, outG_ = 1, hpf_ = 80, eq_[4] = {0, 0, 0, 0};
   Biquad hp_, low_, mud_, pres_, air_;
+  Denoise dn_;
   Gate gate_;
   DeEsser deess_;
   Compressor comp_;
