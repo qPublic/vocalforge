@@ -253,3 +253,17 @@ test('game-only hotkey settings: list is hidden until enabled, and changes reach
   assert.ok(calls.some((c) => c[0] === 'setSettings' && JSON.stringify(c[1].gameList) === JSON.stringify(['cs2.exe', 'r5apex.exe'])));
   window.close();
 });
+
+test('main window tells the user whether a virtual cable is installed', async () => {
+  const withCable = await loadApp({ store: SKIP_WIZARD });
+  assert.match(withCable.window.document.getElementById('cableHint').textContent, /CABLE Input/);
+  assert.equal(withCable.window.document.querySelector('#cableHint button'), null);
+  withCable.window.close();
+
+  const without = await loadApp({ store: SKIP_WIZARD, noCable: true });
+  const hint = without.window.document.getElementById('cableHint');
+  assert.match(hint.textContent, /No virtual cable found/);
+  hint.querySelector('button').click();
+  assert.ok(without.calls.some((c) => c[0] === 'openExternal' && /vb-audio\.com\/Cable/.test(c[1])));
+  without.window.close();
+});

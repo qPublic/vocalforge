@@ -19,16 +19,16 @@ function pageHtml() {
     });
 }
 
-function fakeDevices() {
+function fakeDevices(noCable) {
   return [
     { kind: 'audioinput', deviceId: 'mic1', label: 'Test Mic' },
     { kind: 'audiooutput', deviceId: 'out1', label: 'Test Speakers' },
     { kind: 'audiooutput', deviceId: 'cable', label: 'CABLE Input (VB-Audio Virtual Cable)' },
-  ];
+  ].filter((d) => !(noCable && d.deviceId === 'cable'));
 }
 
 // Returns { dom, window, errors, calls, settle }. `vf` overrides parts of the fake window.vf bridge.
-async function loadApp({ vf = {}, store } = {}) {
+async function loadApp({ vf = {}, store, noCable = false } = {}) {
   const errors = [];
   const calls = [];
   const vc = new VirtualConsole();
@@ -79,7 +79,7 @@ async function loadApp({ vf = {}, store } = {}) {
       window.HTMLDialogElement.prototype.close ||= function () { this.open = false; };
       Object.defineProperty(window.navigator, 'mediaDevices', {
         value: {
-          enumerateDevices: async () => fakeDevices(),
+          enumerateDevices: async () => fakeDevices(noCable),
           getUserMedia: async () => ({ getTracks: () => [] }),
           addEventListener() {},
         },

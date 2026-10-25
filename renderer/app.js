@@ -172,12 +172,27 @@ function fillSelect(sel, devices, saved) {
   }
 }
 
+// Other apps can only hear VocalForge through a virtual cable, so say whether one is installed.
+function updateCableHint(outputs) {
+  const hint = $('cableHint');
+  if (outputs.some((d) => /cable input/i.test(d.label))) {
+    hint.textContent = 'Tip: set Output to CABLE Input (VB-Cable), then pick CABLE Output as your microphone in Discord/OBS. Use headphones when monitoring to avoid feedback.';
+    return;
+  }
+  hint.textContent = 'No virtual cable found. Discord, OBS and games cannot hear VocalForge without one. VB-Cable is free. After installing it, restart the app if it does not show up here. ';
+  const get = document.createElement('button');
+  get.textContent = 'Get VB-Cable';
+  get.addEventListener('click', () => window.vf.openExternal('https://vb-audio.com/Cable/'));
+  hint.append(get);
+}
+
 async function loadDevices() {
   const { inputs, outputs } = await Engine.listDevices();
   fillSelect($('inSel'), inputs, store.devices.in);
   fillSelect($('outSel'), outputs, store.devices.out);
   fillSelect($('monSel'), outputs, store.devices.mon);
   $('monChk').checked = !!store.devices.monitor;
+  updateCableHint(outputs);
 }
 
 let running = false;
