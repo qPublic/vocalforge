@@ -71,9 +71,9 @@ test('native mode: sliders, presets and the blown-out button send settings', asy
 test('native mode: mute button and mute hotkey tell the engine', async () => {
   const { window, engineLog } = await loadApp({ native: true, store: SKIP_WIZARD });
   window.document.getElementById('muteBtn').click();
-  assert.deepEqual(cmds(engineLog, 'mute').pop(), { cmd: 'mute', on: true });
+  assert.deepEqual({ ...cmds(engineLog, 'mute').pop() }, { cmd: 'mute', on: true });
   window.document.getElementById('muteBtn').click();
-  assert.deepEqual(cmds(engineLog, 'mute').pop(), { cmd: 'mute', on: false });
+  assert.deepEqual({ ...cmds(engineLog, 'mute').pop() }, { cmd: 'mute', on: false });
   window.close();
 });
 
@@ -128,22 +128,20 @@ test('native mode: if the engine dies the UI returns to Start and says so', asyn
   window.close();
 });
 
-test('native mode: engine errors during a command show a message and leave the app usable', async () => {
-  const { window, engineLog, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
-  // Make the next start fail like a missing device would.
-  const original = window.vf.sendEngine;
+test('native mode: a failed start shows the engine message and leaves Start usable', async () => {
+  const { window, errors, engineLog, emitEngine, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  // The next start fails the way a missing device would.
   window.vf.sendEngine = (cmd) => {
-    if (cmd.cmd === 'start') {
-      setTimeout(() => window.__engineFail && window.__engineFail(cmd.id), 0);
-      engineLog.push(cmd);
-      return Promise.resolve(true);
-    }
-    return original(cmd);
+    engineLog.push(cmd);
+    if (cmd.cmd === 'start') setTimeout(() => emitEngine({ event: 'error', message: 'No such device', id: cmd.id }), 0);
+    return Promise.resolve(true);
   };
-  window.__engineFail = null;
   window.document.getElementById('startBtn').click();
-  await settle(20);
-  assert.equal(window.document.getElementById('startBtn').textContent, 'Stop', 'sanity: command was issued');
+  await settle(60);
+  assert.ok(errors.some((e) => /Audio error: No such device/.test(e)), 'the engine message reaches the user: ' + errors.join('|'));
+  const btn = window.document.getElementById('startBtn');
+  assert.equal(btn.textContent, 'Start');
+  assert.equal(btn.disabled, false);
   window.close();
 });
 
