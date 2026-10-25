@@ -331,7 +331,7 @@ function tick() {
     const gr = -engine.reduction;
     $('grBar').style.width = Math.min(100, (gr / 24) * 100) + '%';
     $('grDb').textContent = gr.toFixed(1);
-    $('lat').textContent = engine.latencyMs + ' ms';
+    $('lat').textContent = engine.latencyMs + ' ms' + (engine.latencyMeasured ? ' (measured)' : '');
   }
   requestAnimationFrame(tick);
 }

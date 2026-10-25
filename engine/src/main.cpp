@@ -129,6 +129,55 @@ class Ring {
   std::atomic<size_t> w_{0}, r_{0};
 };
 
+// Reads a ring that another device clock fills in whole periods. The two clocks drift and jitter, so a block can
+// arrive a little late; a cushion beyond one block absorbs that. When the ring does run dry the cushion grows (up
+// to about 40 ms), the gap is faded rather than cut, and the audio resumes only once the cushion is rebuilt.
+class Feed {
+ public:
+  void reset(Ring* ring, uint32_t base) {
+    ring_ = ring;
+    base_ = cushion_ = base;
+    primed_ = false;
+    clean_ = fadeIn_ = 0;
+  }
+  void unprime() { primed_ = false; }
+  uint32_t cushion() const { return cushion_; }
+  // Fills dst with m samples (zeros where the ring had nothing). Returns true if it ran dry.
+  bool pull(float* dst, size_t m) {
+    const size_t avail = ring_->size(), need = m + cushion_;
+    if (!primed_ && avail >= need) {
+      primed_ = true;
+      fadeIn_ = kFade;
+    }
+    size_t got = 0;
+    bool dry = false;
+    if (primed_) {
+      if (avail > need + std::max<size_t>(m, base_) * 4) ring_->skip(avail - need);  // stay close to live
+      got = ring_->pop(dst, m);
+      if (got < m) {
+        dry = true;
+        primed_ = false;
+        clean_ = 0;
+        cushion_ = std::min<uint32_t>(cushion_ + 96, std::max<uint32_t>(base_ * 4, 1920));
+        const size_t f = std::min<size_t>(got, kFade);
+        for (size_t i = 0; i < f; i++) dst[got - 1 - i] *= (float)i / (float)f;  // fade out into the gap
+      } else if ((clean_ += (uint32_t)m) > 48000u * 30 && cushion_ > base_) {
+        cushion_ = std::max<uint32_t>(base_, cushion_ - 48);  // calm for 30 s: give some latency back
+        clean_ = 48000u * 20;
+      }
+      for (size_t i = 0; i < got && fadeIn_ > 0; i++, fadeIn_--) dst[i] *= 1.0f - (float)fadeIn_ / (float)kFade;
+    }
+    for (size_t i = got; i < m; i++) dst[i] = 0;
+    return dry;
+  }
+
+ private:
+  static constexpr uint32_t kFade = 64;
+  Ring* ring_ = nullptr;
+  uint32_t base_ = 240, cushion_ = 240, clean_ = 0, fadeIn_ = 0;
+  bool primed_ = false;
+};
+
 struct Clip {
   std::vector<float> samples;  // mono, 48 kHz
 };
@@ -165,6 +214,11 @@ class Engine {
     return {{"inputs", list(cap, capN)}, {"outputs", list(pb, pbN)}};
   }
 
+  // Windows' shared mode runs at 10 ms. Asking a device for less makes some drivers (a USB headset here) hand out
+  // 7 ms periods and deliver about 4% fewer samples than real time, which starves the mixer about once a second.
+  // So the buffer setting is the cushion in the mic ring, never the device period.
+  ma_uint32 devicePeriod() const { return std::max<ma_uint32>(frames_, 480); }
+
   bool start(const json& c, std::string& err) {
     stop();
     if (!initContext(err)) return false;
@@ -180,7 +234,8 @@ class Engine {
     micRing_.clear();
     monRing_.clear();
     deskRing_.clear();
-    primed_ = false;
+    micFeed_.reset(&micRing_, frames_);
+    monFeed_.reset(&monRing_, frames_);
     outputId_ = hasOut ? idOut : ma_device_id{};
     outputIsDefault_ = !hasOut;
 
@@ -189,7 +244,7 @@ class Engine {
     cc.capture.channels = 1;
     cc.capture.pDeviceID = hasIn ? &idIn : nullptr;
     cc.sampleRate = kRate;
-    cc.periodSizeInFrames = frames_;
+    cc.periodSizeInFrames = devicePeriod();
     cc.performanceProfile = ma_performance_profile_low_latency;
     cc.dataCallback = captureThunk;
     cc.pUserData = this;
@@ -210,7 +265,7 @@ class Engine {
       mc.playback.channels = 2;
       mc.playback.pDeviceID = hasMon ? &idMon : nullptr;
       mc.sampleRate = kRate;
-      mc.periodSizeInFrames = frames_;
+      mc.periodSizeInFrames = devicePeriod();
       mc.performanceProfile = ma_performance_profile_low_latency;
       mc.dataCallback = monitorThunk;
       mc.pUserData = this;
@@ -414,7 +469,7 @@ class Engine {
       ma_device_uninit(&playback_);
       playbackInit_ = false;
     }
-    primed_ = false;
+    micFeed_.unprime();
     if (!initPlayback(has ? &dev : nullptr, err)) return false;
     if (ma_device_start(&playback_) != MA_SUCCESS) {
       err = "Could not start the new output";
@@ -469,7 +524,7 @@ class Engine {
     pc.playback.channels = 2;
     pc.playback.pDeviceID = id;
     pc.sampleRate = kRate;
-    pc.periodSizeInFrames = frames_;
+    pc.periodSizeInFrames = devicePeriod();
     pc.performanceProfile = ma_performance_profile_low_latency;
     pc.dataCallback = playbackThunk;
     pc.pUserData = this;
@@ -582,10 +637,7 @@ class Engine {
     float mono[kMaxBlock];
     for (ma_uint32 off = 0; off < n; off += kMaxBlock) {
       const ma_uint32 m = std::min<ma_uint32>(kMaxBlock, n - off);
-      const size_t avail = monRing_.size();
-      if (avail > (size_t)frames_ * 6) monRing_.skip(avail - (size_t)frames_ * 2);  // stay close to live
-      const size_t got = monRing_.pop(mono, m);
-      for (size_t i = got; i < m; i++) mono[i] = 0;
+      if (monFeed_.pull(mono, m)) monUnderruns_++;
       for (ma_uint32 i = 0; i < m; i++) out[2 * (off + i)] = out[2 * (off + i) + 1] = mono[i];
     }
   }
@@ -612,19 +664,9 @@ class Engine {
     for (ma_uint32 off = 0; off < n; off += kMaxBlock) {
       const ma_uint32 m = std::min<ma_uint32>(kMaxBlock, n - off);
 
-      // Microphone, with a small prefill so the two device clocks can drift without constant dropouts.
-      const size_t avail = micRing_.size();
-      if (!primed_ && avail >= frames_) primed_ = true;
-      size_t got = 0;
-      if (primed_) {
-        if (avail > (size_t)frames_ * 6) micRing_.skip(avail - (size_t)frames_ * 2);
-        got = micRing_.pop(mic, m);
-        if (got < m) {
-          underruns_++;
-          primed_ = false;
-        }
-      }
-      for (size_t i = got; i < m; i++) mic[i] = 0;
+      // Microphone, through a cushion so the two device clocks can drift without constant dropouts.
+      if (micFeed_.pull(mic, m)) underruns_++;
+      micCushion_ = micFeed_.cushion();
       if (off == 0 && measureInject_.exchange(false)) {
         // A 3 ms burst of 1 kHz at about -6 dBFS enters at the start of this block.
         measureT0Ns_ = nowNs();
@@ -667,7 +709,7 @@ class Engine {
       meterCv_.wait_for(lock, std::chrono::milliseconds(50));
       if (meterStop_) break;
       emit({{"event", "meters"}, {"in", meterIn_.load()}, {"out", meterOut_.load()}, {"gr", meterGr_.load()}, {"gate", meterGate_.load()},
-            {"latencyMs", latencyMs_.load() + (nsOn_.load() ? 10.f : 0.f)}, {"underruns", underruns_.load()}, {"overruns", overruns_.load()}});
+            {"latencyMs", latencyMs_.load() + (nsOn_.load() ? 10.f : 0.f)}, {"underruns", underruns_.load()}, {"monUnderruns", monUnderruns_.load()}, {"micCushion", micCushion_.load()}, {"overruns", overruns_.load()}});
     }
   }
 
@@ -688,8 +730,8 @@ class Engine {
   json detail_;  // what the devices actually negotiated, for diagnostics
   std::atomic<float> latencyMs_{0};
   std::atomic<bool> nsOn_{false};  // RNNoise holds one 10 ms frame while it is on
-  bool primed_ = false;
-  std::atomic<uint32_t> underruns_{0}, overruns_{0};
+  Feed micFeed_, monFeed_;
+  std::atomic<uint32_t> underruns_{0}, overruns_{0}, monUnderruns_{0}, micCushion_{0};
 
   Ring micRing_{1 << 15}, monRing_{1 << 15}, deskRing_{1 << 16};
 

@@ -15,6 +15,7 @@ class NativeEngine {
     this.boardDb = 0;
     this.running = false;
     this.meters = { in: -100, out: -100, gr: 0, gate: 1, latencyMs: 0 };
+    this.measuredMs = null;
     this.pending = new Map();
     this.nextId = 1;
     this.onGate = () => {};
@@ -78,6 +79,7 @@ class NativeEngine {
         }
         this.pending.clear();
         this.meters = { in: -100, out: -100, gr: 0, gate: 1, latencyMs: 0 };
+        this.measuredMs = null;
         if (wasRunning) {
           this.onError('The native audio engine stopped unexpectedly. Press Start to restart it.');
           this.onExited();
@@ -118,14 +120,17 @@ class NativeEngine {
       await this._call({ cmd: 'stop' });
     } catch {}
     this.meters = { in: -100, out: -100, gr: 0, gate: 1, latencyMs: 0 };
+    this.measuredMs = null;
   }
 
   set(id, value) {
+    if (id === 'nsOn') this.measuredMs = null;
     this.values[id] = value;
     this._send({ cmd: 'set', values: { [id]: value } });
   }
 
   load(values) {
+    this.measuredMs = null;
     this.values = { ...defaults(), ...values };
     this.apply();
   }
@@ -143,7 +148,11 @@ class NativeEngine {
   }
 
   get latencyMs() {
-    return Math.round(this.meters.latencyMs);
+    return this.measuredMs != null ? this.measuredMs : Math.round(this.meters.latencyMs);
+  }
+
+  get latencyMeasured() {
+    return this.measuredMs != null;
   }
 
   setMuted(m) {
@@ -183,8 +192,12 @@ class NativeEngine {
   }
 
   // Plays a click through the chain and times it at the output device. Takes about 3 seconds.
-  measureLatency() {
-    return this._call({ cmd: 'measure' }, 20000);
+  async measureLatency() {
+    const r = await this._call({ cmd: 'measure' }, 20000);
+    // The header shows this real figure instead of the engine's worst-case estimate, until a setting
+    // that changes the delay (noise suppression, a restart) makes it out of date.
+    this.measuredMs = Math.round(r.outputMs + r.inputMs);
+    return r;
   }
 
   hasSound() {

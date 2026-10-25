@@ -99,3 +99,10 @@ test('wiring: Restart relaunches visibly and exits without the quit hooks, from 
   assert.ok(main.includes("ipcMain.handle('app:restart'") && main.includes("label: 'Restart VocalForge'"));
   assert.ok(preload.includes("restartApp: () => ipcRenderer.invoke('app:restart')"));
 });
+
+test('wiring: no device is opened with a period under 10 ms (that made a USB mic deliver 4% too few samples)', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'engine', 'src', 'main.cpp'), 'utf8');
+  assert.ok(!/periodSizeInFrames\s*=\s*frames_/.test(src), 'device periods must come from devicePeriod(), not the buffer setting');
+  assert.equal((src.match(/periodSizeInFrames = devicePeriod\(\)/g) || []).length, 3, 'capture, monitor and playback');
+  assert.ok(/devicePeriod\(\) const \{ return std::max<ma_uint32>\(frames_, 480\)/.test(src));
+});

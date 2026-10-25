@@ -236,3 +236,21 @@ test('native mode: a saved buffer size that is not one of the choices falls back
   assert.equal(cmds(engineLog, 'start')[0].bufferFrames, 240);
   window.close();
 });
+
+test('native mode: after measuring, the header shows the measured delay until noise suppression changes it', async () => {
+  const { window, settle } = await loadApp({ native: true, store: SKIP_WIZARD });
+  const $ = (id) => window.document.getElementById(id);
+  $('startBtn').click();
+  await settle(60);
+  $('measureBtn').click();
+  await settle(60);
+  await new Promise((r) => window.requestAnimationFrame(r));
+  assert.equal($('lat').textContent, '42 ms (measured)');
+  // Turning noise suppression on adds delay the measurement did not include, so the number goes stale.
+  const ns = window.document.querySelector('input.toggle[title="Enable Noise suppression"]');
+  ns.checked = true;
+  ns.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await new Promise((r) => window.requestAnimationFrame(r));
+  assert.doesNotMatch($('lat').textContent, /measured/);
+  window.close();
+});
