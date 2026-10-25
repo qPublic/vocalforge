@@ -305,6 +305,21 @@ async function setupGeneral() {
   $('optLaunch').checked = cfg.launchAtLogin;
   $('optTray').checked = cfg.closeToTray;
   $('optAutoStart').checked = !!store.autoStartMixer;
+  $('optGameOnly').checked = !!cfg.gameOnlyHotkeys;
+  $('gameList').value = (cfg.gameList || []).join('\n');
+  $('optGameCursor').checked = cfg.gameNeedsHiddenCursor !== false;
+  $('gameListRow').hidden = $('gameCursorRow').hidden = !cfg.gameOnlyHotkeys;
+  $('optGameCursor').addEventListener('change', (e) => window.vf.setSettings({ gameNeedsHiddenCursor: e.target.checked }));
+  $('optGameOnly').addEventListener('change', (e) => {
+    $('gameListRow').hidden = $('gameCursorRow').hidden = !e.target.checked;
+    window.vf.setSettings({ gameOnlyHotkeys: e.target.checked });
+  });
+  $('gameList').addEventListener('change', async (e) => {
+    const lines = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const saved = await window.vf.setSettings({ gameList: lines });
+    if (saved && saved.gameList) e.target.value = saved.gameList.join('\n');
+    $('gameListNote').textContent = saved && saved.gameList && saved.gameList.length < lines.length ? 'Some lines were ignored: use names like VALORANT-Win64-Shipping.exe.' : '';
+  });
   $('optLaunch').addEventListener('change', (e) => window.vf.setSettings({ launchAtLogin: e.target.checked }));
   $('optTray').addEventListener('change', (e) => window.vf.setSettings({ closeToTray: e.target.checked }));
   $('optAutoStart').addEventListener('change', (e) => {

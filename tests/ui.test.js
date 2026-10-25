@@ -228,3 +228,28 @@ test('volume: missing, junk or out-of-range saved levels are repaired', async ()
     window.close();
   }
 });
+
+test('game-only hotkey settings: list is hidden until enabled, and changes reach the main process', async () => {
+  const { window, calls, settle } = await loadApp({ store: SKIP_WIZARD });
+  const $ = (id) => window.document.getElementById(id);
+  assert.equal($('gameListRow').hidden, true);
+  assert.equal($('gameCursorRow').hidden, true);
+  assert.equal($('optGameCursor').checked, true);
+  assert.equal($('gameList').value, 'VALORANT-Win64-Shipping.exe');
+
+  $('optGameOnly').checked = true;
+  $('optGameOnly').dispatchEvent(new window.Event('change'));
+  await settle();
+  assert.equal($('gameListRow').hidden, false);
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && c[1].gameOnlyHotkeys === true));
+
+  $('optGameCursor').checked = false;
+  $('optGameCursor').dispatchEvent(new window.Event('change'));
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && c[1].gameNeedsHiddenCursor === false));
+
+  $('gameList').value = 'cs2.exe\n\n r5apex.exe ';
+  $('gameList').dispatchEvent(new window.Event('change'));
+  await settle();
+  assert.ok(calls.some((c) => c[0] === 'setSettings' && JSON.stringify(c[1].gameList) === JSON.stringify(['cs2.exe', 'r5apex.exe'])));
+  window.close();
+});

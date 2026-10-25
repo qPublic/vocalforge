@@ -46,7 +46,7 @@ async function loadApp({ vf = {}, store } = {}) {
     onUpdateStatus: () => {},
     openExternal: record('openExternal', async () => true),
     toggleDevTools: record('toggleDevTools', async () => {}),
-    getSettings: record('getSettings', async () => ({ launchAtLogin: false, closeToTray: false })),
+    getSettings: record('getSettings', async () => ({ launchAtLogin: false, closeToTray: false, gameOnlyHotkeys: false, gameNeedsHiddenCursor: true, gameList: ['VALORANT-Win64-Shipping.exe'] })),
     setSettings: record('setSettings', async (p) => p),
     listSounds: record('listSounds', async () => []),
     addSounds: record('addSounds', async () => ({ added: [], skipped: [] })),
