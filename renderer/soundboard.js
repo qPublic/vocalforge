@@ -21,7 +21,9 @@ const Soundboard = (() => {
   // output pointed at a virtual cable. Goes to the monitor device when one is chosen.
   const previews = new Set();
   // Previews follow the soundboard volume. An audio element cannot go above full scale, so the slider tops out at 0 dB.
-  const previewVolume = () => dbToLin(clampDb(store.board && store.board.db));
+  // "Hear in headphones" plays have their own level (store.board.hearDb).
+  const previewVolume = (hear) => dbToLin(clampDb(store.board && (hear ? store.board.hearDb : store.board.db)));
+  const clipVolume = (a) => Math.min(1, previewVolume(a.dataset.hear) * dbToLin(clipDb(a.dataset.clip)));
   let hintedCable = false;
   let files = [];
   let query = '';
@@ -33,18 +35,19 @@ const Soundboard = (() => {
     return typeof v === 'number' && Number.isFinite(v) ? Math.min(0, Math.max(CLIP_MIN_DB, v)) : 0;
   };
 
-  async function preview(name) {
+  async function preview(name, hear = false) {
     const bytes = await window.vf.readSound(name);
     const url = URL.createObjectURL(new Blob([bytes]));
     const audio = new Audio(url);
-    audio.volume = Math.min(1, previewVolume() * dbToLin(clipDb(name)));
+    audio.dataset.clip = name;
+    if (hear) audio.dataset.hear = '1';
+    audio.volume = clipVolume(audio);
     const monitor = store.devices && store.devices.mon;
     if (monitor && monitor !== 'default' && audio.setSinkId) {
       try {
         await audio.setSinkId(monitor);
       } catch {}
     }
-    audio.dataset.clip = name;
     previews.add(audio);
     audio.addEventListener('ended', () => {
       previews.delete(audio);
@@ -68,6 +71,8 @@ const Soundboard = (() => {
       }
       const bytes = engine.hasSound(name) ? null : await window.vf.readSound(name);
       await engine.playSound(name, bytes, clipDb(name));
+      // Monitor already carries the soundboard, so a second copy would double it.
+      if (store.board.hear && !(store.devices && store.devices.monitor)) preview(name, true).catch((err) => toast('Could not play in your headphones: ' + err.message, true));
       if (!hintedCable && !(store.devices && store.devices.monitor)) {
         hintedCable = true;
         toast('Sounds play into your output (what other apps hear). Turn on Monitor to hear them yourself, or use the headphone button on a pad to preview.');
@@ -143,7 +148,7 @@ const Soundboard = (() => {
         if (db === 0) delete store.clipDb[name];
         else store.clipDb[name] = db;
         vol.title = `Clip volume: ${db} dB`;
-        for (const a of previews) if (a.dataset.clip === name) a.volume = Math.min(1, previewVolume() * dbToLin(db));
+        for (const a of previews) if (a.dataset.clip === name) a.volume = clipVolume(a);
         persist();
       });
       pad.append(btn, row, vol);
@@ -175,7 +180,24 @@ const Soundboard = (() => {
       board.db = clampDb(parseFloat(e.target.value));
       $('boardVolVal').textContent = board.db + ' dB';
       engine.setBoardLevel(board.db);
-      for (const a of previews) a.volume = Math.min(1, previewVolume() * dbToLin(clipDb(a.dataset.clip)));
+      for (const a of previews) a.volume = clipVolume(a);
+      persist();
+    });
+
+    // Hear the soundboard (and nothing else) in the monitor headphones, at its own level.
+    board.hear = board.hear === true;
+    board.hearDb = clampDb(board.hearDb);
+    $('boardHear').checked = board.hear;
+    $('boardHearVol').value = board.hearDb;
+    $('boardHearVal').textContent = board.hearDb + ' dB';
+    $('boardHear').addEventListener('change', (e) => {
+      board.hear = e.target.checked;
+      persist();
+    });
+    $('boardHearVol').addEventListener('input', (e) => {
+      board.hearDb = clampDb(parseFloat(e.target.value));
+      $('boardHearVal').textContent = board.hearDb + ' dB';
+      for (const a of previews) a.volume = clipVolume(a);
       persist();
     });
     $('boardAdd').addEventListener('click', async () => {

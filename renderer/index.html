@@ -63,6 +63,8 @@
       <button id="boardBrowse">Browse sound packs…</button>
       <input type="search" id="boardSearch" placeholder="Search sounds" aria-label="Search sounds">
       <label>Volume <input type="range" id="boardVol" min="-40" max="0" step="1"> <b id="boardVolVal"></b></label>
+      <label class="chk" title="Plays each clip in your monitor headphones too, at its own level. Your voice and desktop audio are not included. Not needed while Monitor is on."><input type="checkbox" id="boardHear"> Hear in headphones</label>
+      <label>Headphone volume <input type="range" id="boardHearVol" min="-40" max="0" step="1"> <b id="boardHearVal"></b></label>
       <span class="stopGroup"><button id="boardStop">Stop all</button><span id="stopChip"></span></span>
       <span id="boardStatus" role="status"></span>
     </div>

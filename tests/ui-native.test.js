@@ -344,3 +344,55 @@ test('native mode: the diagnostics report includes the engine counters and devic
   assert.match(text, /Mic feed: 3 underruns, 1 overruns, 2 monitor underruns, cushion 480 samples/);
   window.close();
 });
+
+// ---------- hear the soundboard (only) in the headphones ----------
+const ONE_SOUND = { listSounds: async () => [{ name: 'ding.wav', size: 5 }] };
+const approx = (a, b) => Math.abs(a - b) < 0.005;
+
+async function playPad(opts, setup = () => {}) {
+  const ctx = await loadApp({ native: true, vf: ONE_SOUND, ...opts });
+  setup(ctx.window);
+  ctx.window.document.getElementById('startBtn').click();
+  await ctx.settle(60);
+  ctx.window.__played = 0;
+  ctx.window.document.querySelector('.padPlay').click();
+  await ctx.settle();
+  return ctx;
+}
+
+test('hear in headphones: off by default, so a played pad goes only to the output', async () => {
+  const { window, errors } = await playPad({ store: SKIP_WIZARD });
+  assert.equal(window.document.getElementById('boardHear').checked, false);
+  assert.ok(!window.__played, 'no local copy');
+  assert.deepEqual(errors, []);
+  window.close();
+});
+
+test('hear in headphones: a played pad is also heard locally at its own level, with the clip level applied', async () => {
+  const { window, errors } = await playPad({ store: { ...SKIP_WIZARD, board: { db: -12, hear: true, hearDb: -6 }, clipDb: { 'ding.wav': -6 }, boardLevelMigrated: true } });
+  assert.equal(window.__played, 1);
+  assert.ok(approx(window.__lastVolume, 0.2512), `-6 dB headphone and -6 dB clip gave ${window.__lastVolume}`); // not the -12 dB output level
+  assert.deepEqual(errors, []);
+  window.close();
+});
+
+test('hear in headphones: the checkbox and slider are saved and limited to 0 dB', async () => {
+  const { window } = await loadApp({ native: true, store: SKIP_WIZARD, vf: ONE_SOUND });
+  const $ = (id) => window.document.getElementById(id);
+  $('boardHear').checked = true;
+  $('boardHear').dispatchEvent(new window.Event('change', { bubbles: true }));
+  assert.equal($('boardHearVol').max, '0');
+  $('boardHearVol').value = '-20';
+  $('boardHearVol').dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.equal($('boardHearVal').textContent, '-20 dB');
+  const saved = JSON.parse(window.localStorage.getItem('vocalforge.v1'));
+  assert.equal(saved.board.hear, true);
+  assert.equal(saved.board.hearDb, -20);
+  window.close();
+});
+
+test('hear in headphones: skipped while Monitor is on, because Monitor already carries the soundboard', async () => {
+  const { window } = await playPad({ store: { ...SKIP_WIZARD, board: { db: -12, hear: true, hearDb: -6 }, devices: { monitor: true } } });
+  assert.ok(!window.__played, 'a second copy would double it');
+  window.close();
+});

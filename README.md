@@ -48,7 +48,7 @@ chat app. Use headphones when monitoring. The setup wizard walks through this an
 - **Auto-tune my voice**: listens to your room and voice and suggests settings for a natural sound
 - Blown-out mic effect: loud, clipped, crunchy bad-mic sound
 - Desktop audio channel (music, game audio) with its own level
-- Soundboard with global hotkeys, search, per-clip volume, and one-click sound packs from a curated catalog
+- Soundboard with global hotkeys, search, per-clip volume, and one-click sound packs from a curated catalog; "Hear in headphones" plays clips in your monitor headphones at their own volume, without your voice or desktop audio
 - Game-only hotkeys: hotkeys work only while a listed game is focused (and, optionally, the cursor is hidden,
   so typing in game chat is not affected)
 - Mute hotkey, tray icon, launch at startup, close to tray, Restart button
